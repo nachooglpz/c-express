@@ -6,7 +6,11 @@
 #include <netinet/in.h>
 
 void app_get(App *app, const char *path, void (*handler)(int)) {
-    router_add_route(&app->router, path, handler);
+    router_add_layer(&app->router, "GET", path, handler);
+}
+
+void app_post(App *app, const char *path, void (*handler)(int)) {
+    router_add_layer(&app->router, "POST", path, handler);
 }
 
 void app_listen(App *app, int port) {
@@ -38,20 +42,27 @@ void app_listen(App *app, int port) {
             continue;
         }
 
-        // for simplicity always call the first route's handler
-        if (app->router.route_count > 0) {
-            app->router.routes[0].layer.handler(client_fd);
-        }
+        char buffer[1024] = {0};
+        read(client_fd, buffer, sizeof(buffer) -1);
+
+        // parse method and path
+        char method[8], path[256];
+        sscanf(buffer, "%7s %255s", method, path);
+
+        router_handle(&app->router, method, path, client_fd);
+        
         close(client_fd);
     }
 }
 
 App create_app() {
     App app;
-    app.router.routes = NULL;
-    app.router.route_count = 0;
+    app.router.layers = NULL;
+    app.router.layer_count = 0;
     app.router.capacity = 0;
     app.get = app_get;
+    app.post = app_post;
     app.listen = app_listen;
+    
     return app;
 }

@@ -1,31 +1,39 @@
 #include "router.h"
+#include "layer.h"
 #include <string.h>
 #include <stdlib.h>
 
-void router_add_route(Router *router, const char *path, void (*handler)(int)) {
-    if (router->route_count >= router->capacity) {
+void router_add_layer(Router *router, const char *method, const char *path, void (*handler)(int)) {
+    if (router->layer_count >= router->capacity) {
         int new_capacity = router->capacity == 0 ? 4 : router->capacity * 2;
-        Route *new_routes = realloc(router->routes, new_capacity * sizeof(Route));
-        if (!new_routes) {
-            // Allocation failed
+        Layer *new_layers = realloc(router->layers, new_capacity * sizeof(Layer));
+        if (!new_layers) {
+            // allocation failed
             return;
         }
-        router->routes = new_routes;
+        router->layers = new_layers;
         router->capacity = new_capacity;
     }
-    router->routes[router->route_count].path = path;
-    router->routes[router->route_count].layer.path = path;
-    router->routes[router->route_count].layer.handler = handler;
-    router->route_count++;
+
+    router->layers[router->layer_count].method = method;
+    router->layers[router->layer_count].path = path;
+    router->layers[router->layer_count].handler = handler;
+    router->layer_count++;
 }
 
-void router_handle(Router * router, const char *path, int client_fd) {
-    for (int i = 0; i < router->route_count; i++) {
-        if (strcmp(router->routes[i].path, path) == 0) {
-            router->routes[i].layer.handler(client_fd);
+void router_handle(Router *router, const char *method, const char *path, int client_fd) {
+    for (int i = 0; i < router->layer_count; i++) {
+        if (layer_match(&router->layers[i], method, path)) {
+            router->layers[i].handler(client_fd);
             return;
         }
     }
-
     // no route matched
+    const char *response =
+        "HTTP/1.1 404 Not Found\r\n"
+        "Content-Type: text/plain\r\n"
+        "Content-Length: 9\r\n"
+        "\r\n"
+        "Not Found";
+    write(client_fd, response, strlen(response));
 }

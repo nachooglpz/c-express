@@ -5,12 +5,14 @@
 
 
 typedef struct {
-    Route *routes;
-    int route_count;
+    // Route *routes;
+    Layer *layers;
+    // int route_count;
+    int layer_count;
     int capacity;
 } Router;
 
-void router_add_route(Router *router, const char *path, void (*handler)(int));
-void router_handle(Router *router, const char *path, int client_fd);
+void router_add_layer(Router *router, const char *method, const char *path, void (*handler)(int));
+void router_handle(Router *router, const char *method, const char *path, int client_fd);
 
 #endif
