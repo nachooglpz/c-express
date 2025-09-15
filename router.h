@@ -12,7 +12,17 @@ typedef struct {
     int capacity;
 } Router;
 
-void router_add_layer(Router *router, const char *method, const char *path, void (*handler)(int));
+// context for next middleware
+typedef struct {
+    Router *router;
+    int *matches;
+    int match_count;
+    int client_fd;
+    int idx;
+} NextContext;
+
+void router_add_layer(Router *router, const char *method, const char *path, Handler handler);
+static void next_handler(void *context);
 void router_handle(Router *router, const char *method, const char *path, int client_fd);
 
 #endif
