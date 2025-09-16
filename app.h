@@ -8,6 +8,7 @@ typedef struct {
     void (*get)(struct App *, const char *path, void (*handler)(int));
     void (*post)(struct App *, const char *path, void (*handler)(int));
     void (*listen)(struct App *, int port);
+    void (*use)(struct App*, void (*handler)(int));
 } App;
 
 void app_get(App *app, const char *path, void (*handler)(int));

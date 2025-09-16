@@ -1,4 +1,5 @@
 #include "app.h"
+#include "response.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,42 +13,26 @@ void log_handler(int client_fd, void (*next)(void *), void *context) {
 
 // second middleware for GET /
 void hello_handler(int client_fd, void (*next)(void *), void *context) {
-    const char *response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 13\r\n"
-        "\r\n"
-        "Hello World!\n";
-    write(client_fd, response, strlen(response));
+    Response *res = (Response *)context;
+    res->send(res, "Hello World!");
     // no next(context) here, end chain
 }
 
 // handler for GET /2
 void hello_handler2(int client_fd, void (*next)(void *), void *context) {
-    const char *response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 15\r\n"
-        "\r\n"
-        "Hello World 2!\n";
-    write(client_fd, response, strlen(response));
+    Response *res = (Response *)context;
+    res->send(res, "Hello World 2!");
 }
 
 // handler for POST /post
 void post_handler(int client_fd, void (*next)(void *), void *context) {
-    const char *response =
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 26\r\n"
-        "\r\n"
-        "This is the POST handler!\n";
-    write(client_fd, response, strlen(response));
+    Response *res = (Response *)context;
+    res->send(res, "This is the POST handler!");
 }
 
 int main() {
     App app = create_app();
 
-    // chain two handlers for GET /
     app.get(&app, "/", log_handler);
     app.get(&app, "/", hello_handler);
     app.get(&app, "/2", hello_handler2);

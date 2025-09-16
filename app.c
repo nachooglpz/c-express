@@ -1,16 +1,29 @@
 #include "app.h"
+#include "response.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
 
-void app_get(App *app, const char *path, void (*handler)(int)) {
+// middleware to attach Response to each request
+void express_init(int client_fd, void (*next)(void *), void *context) {
+    Response *res = malloc(sizeof(Response));
+    response_init(res, client_fd);
+    next(res);
+    free(res);
+}
+
+void app_get(App *app, const char *path, Handler handler) {
     router_add_layer(&app->router, "GET", path, handler);
 }
 
-void app_post(App *app, const char *path, void (*handler)(int)) {
+void app_post(App *app, const char *path, Handler handler) {
     router_add_layer(&app->router, "POST", path, handler);
+}
+
+void app_use(App *app, Handler handler) {
+    router_add_layer(&app->router, "USE", "/", handler);
 }
 
 void app_listen(App *app, int port) {
@@ -63,6 +76,9 @@ App create_app() {
     app.get = app_get;
     app.post = app_post;
     app.listen = app_listen;
-    
+    app.use = app_use;
+
+    // automatically register express_init middleware
+    app.use(&app, express_init);
     return app;
 }

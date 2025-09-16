@@ -53,3 +53,7 @@ void router_handle(Router *router, const char *method, const char *path, int cli
     }
     free(matches);
 }
+
+void router_use(Router *router, Handler handler) {
+    router_add_layer(router, "USE", "/", handler);
+}
