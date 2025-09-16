@@ -8,21 +8,26 @@
 
 // middleware to attach Response to each request
 void express_init(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
     Response *res = malloc(sizeof(Response));
     response_init(res, client_fd);
-    next(res);
+    ctx->user_context = res;
+    next(ctx);
     free(res);
 }
 
 void app_get(App *app, const char *path, Handler handler) {
+    printf("[DEBUG] app_get: path=%s\n", path);
     router_add_layer(&app->router, "GET", path, handler);
 }
 
 void app_post(App *app, const char *path, Handler handler) {
+    printf("[DEBUG] app_post: path=%s\n", path);
     router_add_layer(&app->router, "POST", path, handler);
 }
 
 void app_use(App *app, Handler handler) {
+    printf("[DEBUG] app_use: registering middleware\n");
     router_add_layer(&app->router, "USE", "/", handler);
 }
 
@@ -54,13 +59,16 @@ void app_listen(App *app, int port) {
             perror("accept");
             continue;
         }
+        printf("[DEBUG] app_listen: accepted client_fd=%d\n", client_fd);
 
         char buffer[1024] = {0};
         read(client_fd, buffer, sizeof(buffer) -1);
+        printf("[DEBUG] app_listen: received request: %s\n", buffer);
 
         // parse method and path
         char method[8], path[256];
         sscanf(buffer, "%7s %255s", method, path);
+        printf("[DEBUG] app_listen: method=%s, path=%s\n", method, path);
 
         router_handle(&app->router, method, path, client_fd);
         

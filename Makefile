@@ -1,8 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -g
-SRC=main.c app.c router.c layer.c
+SRC=main.c app.c router.c layer.c response.c
 OBJ=$(SRC:.c=.o)
-DEPS=app.h router.h route.h layer.h
+DEPS=app.h router.h route.h layer.h response.h
 TARGET=c-server
 
 all: $(TARGET)

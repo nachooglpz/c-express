@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "unistd.h": "c",
-        "response.h": "c"
+        "response.h": "c",
+        "string.h": "c"
     }
 }

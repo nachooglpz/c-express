@@ -6,7 +6,7 @@
 // implementation of send
 void response_send(Response *res, const char *body) {
     // for now, just print to console and send to client
-    printf("wow, %s\n", body);
+    printf("[DEBUG] Response set: %s\n", body);
     char header[256];
     int body_len = strlen(body);
     snprintf(header, sizeof(header),
