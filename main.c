@@ -27,6 +27,13 @@ void hello_handler2(int client_fd, void (*next)(void *), void *context) {
     res->send(res, "Hello World 2!");
 }
 
+// handler to send a json
+void json_handler(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
+    Response *res = (Response *)ctx->user_context;
+    res->json(res, "{\"hello\":\"world\"}");
+}
+
 // handler for POST /post
 void post_handler(int client_fd, void (*next)(void *), void *context) {
     NextContext *ctx = (NextContext *)context;
@@ -42,6 +49,7 @@ int main() {
     app.get(&app, "/", hello_handler);
     app.get(&app, "/2", hello_handler2);
     app.post(&app, "/post", post_handler);
+    app.get(&app, "/json", json_handler);
     app.listen(&app, 3000);
 
     free(app.router.layers);
