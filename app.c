@@ -65,13 +65,13 @@ void app_listen(App *app, int port) {
         read(client_fd, buffer, sizeof(buffer) -1);
         printf("[DEBUG] app_listen: received request: %s\n", buffer);
 
-        // parse method and path
-        char method[8], path[256];
-        sscanf(buffer, "%7s %255s", method, path);
-        printf("[DEBUG] app_listen: method=%s, path=%s\n", method, path);
+        // Create and initialize request object
+        Request *req = malloc(sizeof(Request));
+        request_init(req, client_fd, buffer);
 
-        router_handle(&app->router, method, path, client_fd);
+        router_handle(&app->router, req->method, req->path, client_fd, req);
         
+        free(req);
         close(client_fd);
     }
 }

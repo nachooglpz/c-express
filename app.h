@@ -2,13 +2,17 @@
 #define APP_H
 
 #include "router.h"
+#include "request.h"
 
-typedef struct {
+// Forward declaration
+typedef struct App App;
+
+typedef struct App {
     Router router;
-    void (*get)(struct App *, const char *path, Handler handler);
-    void (*post)(struct App *, const char *path, Handler handler);
-    void (*listen)(struct App *, int port);
-    void (*use)(struct App*, Handler handler);
+    void (*get)(App *, const char *path, Handler handler);
+    void (*post)(App *, const char *path, Handler handler);
+    void (*listen)(App *, int port);
+    void (*use)(App*, Handler handler);
 } App;
 
 void express_init(int client_fd, void (*next)(void *), void *context);

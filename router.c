@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 void router_add_layer(Router *router, const char *method, const char *path, Handler handler) {
     if (router->layer_count >= router->capacity) {
@@ -27,14 +28,21 @@ static void next_handler(void *context) {
     printf("[DEBUG] next_handler: idx=%d, match_count=%d\n", ctx->idx, ctx->match_count);
     if (ctx->idx < ctx->match_count) {
         int layer_idx = ctx->matches[ctx->idx++];
+        Layer *layer = &ctx->router->layers[layer_idx];
+        
+        // Parse URL parameters if this is a route (not middleware)
+        if (strcmp(layer->method, "USE") != 0) {
+            request_parse_params(ctx->req, layer->path, ctx->req->path);
+        }
+        
         printf("[DEBUG] next_handler: calling handler for layer_idx=%d\n", layer_idx);
-        ctx->router->layers[layer_idx].handler(ctx->client_fd, next_handler, ctx);
+        layer->handler(ctx->client_fd, next_handler, ctx);
     } else {
         printf("[DEBUG] next_handler: end of chain\n");
     }
 }
 
-void router_handle(Router *router, const char *method, const char *path, int client_fd) {
+void router_handle(Router *router, const char *method, const char *path, int client_fd, Request *req) {
     printf("[DEBUG] router_handle: method=%s, path=%s\n", method, path);
     int *matches = malloc(router->layer_count * sizeof(int));
     int match_count = 0;
@@ -45,7 +53,7 @@ void router_handle(Router *router, const char *method, const char *path, int cli
     }
     printf("[DEBUG] router_handle: match_count=%d\n", match_count);
 
-    NextContext ctx = { router, matches, match_count, client_fd, 0, NULL };
+    NextContext ctx = { router, matches, match_count, client_fd, 0, req, NULL };
 
     if (match_count > 0) {
         next_handler(&ctx);
