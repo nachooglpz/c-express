@@ -1,6 +1,7 @@
 #include "router.h"
 #include "layer.h"
 #include "response.h"
+#include "error.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,7 +25,7 @@ void router_add_layer(Router *router, const char *method, const char *path, Hand
     router->layer_count++;
 }
 
-static void next_handler(void *context) {
+void next_handler(void *context) {
     NextContext *ctx = (NextContext *)context;
     printf("[DEBUG] next_handler: idx=%d, match_count=%d\n", ctx->idx, ctx->match_count);
     if (ctx->idx < ctx->match_count) {
@@ -60,7 +61,7 @@ void router_handle(Router *router, const char *method, const char *path, int cli
     }
     printf("[DEBUG] router_handle: match_count=%d, route_match_count=%d\n", match_count, route_match_count);
 
-    NextContext ctx = { router, matches, match_count, client_fd, 0, req, &route_match_count };
+    NextContext ctx = { router, NULL, matches, match_count, client_fd, 0, req, &route_match_count, NULL };
 
     if (match_count > 0) {
         next_handler(&ctx);

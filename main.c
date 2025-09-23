@@ -1,6 +1,4 @@
 #include "app.h"
-#include "response.h"
-#include "request.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -184,8 +182,85 @@ void status_test_handler(int client_fd, void (*next)(void *), void *context) {
     }
 }
 
+// Error-prone handler that demonstrates error throwing
+void error_test_handler(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
+    Response *res = (Response *)ctx->user_context;
+    Request *req = ctx->req;
+    
+    const char *error_type = req->get_param(req, "type");
+    
+    TRY(ctx->error_ctx)
+        if (!error_type) {
+            THROW_ERROR(ctx->error_ctx, ERROR_BAD_REQUEST, "Missing error type parameter");
+            return;
+        }
+        
+        if (strcmp(error_type, "400") == 0) {
+            THROW_ERROR(ctx->error_ctx, ERROR_BAD_REQUEST, "This is a test bad request error");
+        } else if (strcmp(error_type, "401") == 0) {
+            THROW_ERROR(ctx->error_ctx, ERROR_UNAUTHORIZED, "You are not authorized to access this resource");
+        } else if (strcmp(error_type, "403") == 0) {
+            THROW_ERROR(ctx->error_ctx, ERROR_FORBIDDEN, "Access to this resource is forbidden");
+        } else if (strcmp(error_type, "500") == 0) {
+            THROW_ERROR(ctx->error_ctx, ERROR_INTERNAL_SERVER_ERROR, "Something went wrong on the server");
+        } else {
+            // This should work fine
+            res->send(res, "No error thrown - everything is working fine!");
+        }
+    CATCH(ctx->error_ctx)
+        printf("[DEBUG] error_test_handler: Caught error in handler\n");
+        // Error will be handled by the error middleware
+        return;
+    FINALLY(ctx->error_ctx)
+        printf("[DEBUG] error_test_handler: Finally block executed\n");
+}
+
+// Custom error handler
+void custom_error_handler(Error *error, int client_fd, void *context) {
+    printf("[DEBUG] custom_error_handler: Handling error %d: %s\n", error->status_code, error->message);
+    
+    Response *res = create_response(client_fd);
+    
+    // Set appropriate status code
+    response_status(res, error->status_code);
+    response_set_header(res, "Content-Type", "application/json");
+    response_set_header(res, "X-Error-Handler", "custom");
+    
+    // Create detailed error response
+    char error_response[1024];
+    snprintf(error_response, sizeof(error_response),
+        "{"
+        "\"error\":\"%s\","
+        "\"message\":\"%s\","
+        "\"status\":%d,"
+        "\"details\":{"
+        "\"file\":\"%s\","
+        "\"line\":%d,"
+        "\"function\":\"%s\""
+        "},"
+        "\"handled_by\":\"custom_error_handler\""
+        "}",
+        error_get_status_text(error->code),
+        error->message,
+        error->status_code,
+        error->file,
+        error->line,
+        error->function
+    );
+    
+    response_send(res, error_response);
+    destroy_response(res);
+    
+    // Mark error as handled
+    error->is_handled = true;
+}
+
 int main() {
     App app = create_app();
+
+    // Set up custom error handler
+    app.error(&app, custom_error_handler);
 
     // Add logging middleware
     app.use(&app, log_handler);
@@ -196,6 +271,7 @@ int main() {
     app.get(&app, "/users/:id", user_handler);
     app.get(&app, "/json", json_handler);
     app.get(&app, "/status/:code", status_test_handler);  // Test different status codes
+    app.get(&app, "/error/:type", error_test_handler);    // Test error handling
     
     // POST routes
     app.post(&app, "/post", post_handler);
