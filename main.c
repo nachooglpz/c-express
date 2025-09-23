@@ -96,17 +96,98 @@ void post_handler(int client_fd, void (*next)(void *), void *context) {
     res->send(res, response_body);
 }
 
+// handler for PUT /users/:id
+void put_handler(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
+    Response *res = (Response *)ctx->user_context;
+    Request *req = ctx->req;
+    
+    const char *user_id = req->get_param(req, "id");
+    printf("[DEBUG] put_handler: updating user %s\n", user_id ? user_id : "unknown");
+    printf("[DEBUG] put_handler: request body: %s\n", req->body);
+    
+    char response_body[512];
+    snprintf(response_body, sizeof(response_body), 
+             "PUT received! Updated user %s with data: %s", 
+             user_id ? user_id : "unknown", req->body);
+    res->send(res, response_body);
+}
+
+// handler for DELETE /users/:id
+void delete_handler(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
+    Response *res = (Response *)ctx->user_context;
+    Request *req = ctx->req;
+    
+    const char *user_id = req->get_param(req, "id");
+    printf("[DEBUG] delete_handler: deleting user %s\n", user_id ? user_id : "unknown");
+    
+    char response_body[256];
+    snprintf(response_body, sizeof(response_body), 
+             "DELETE received! Deleted user %s", 
+             user_id ? user_id : "unknown");
+    res->send(res, response_body);
+}
+
+// handler for PATCH /users/:id
+void patch_handler(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
+    Response *res = (Response *)ctx->user_context;
+    Request *req = ctx->req;
+    
+    const char *user_id = req->get_param(req, "id");
+    printf("[DEBUG] patch_handler: patching user %s\n", user_id ? user_id : "unknown");
+    printf("[DEBUG] patch_handler: request body: %s\n", req->body);
+    
+    char response_body[512];
+    snprintf(response_body, sizeof(response_body), 
+             "PATCH received! Patched user %s with data: %s", 
+             user_id ? user_id : "unknown", req->body);
+    res->send(res, response_body);
+}
+
+// handler for OPTIONS /api
+void options_handler(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
+    Response *res = (Response *)ctx->user_context;
+    
+    printf("[DEBUG] options_handler: CORS preflight request\n");
+    
+    // Set CORS headers
+    res->set_header(res, "Access-Control-Allow-Origin", "*");
+    res->set_header(res, "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    res->set_header(res, "Access-Control-Allow-Headers", "Content-Type, Authorization");
+    
+    res->send(res, "");
+}
+
 int main() {
     App app = create_app();
 
     // Add logging middleware
     app.use(&app, log_handler);
     
+    // GET routes
     app.get(&app, "/", hello_handler);
     app.get(&app, "/2", hello_handler2);
     app.get(&app, "/users/:id", user_handler);
-    app.post(&app, "/post", post_handler);
     app.get(&app, "/json", json_handler);
+    
+    // POST routes
+    app.post(&app, "/post", post_handler);
+    
+    // PUT routes
+    app.put(&app, "/users/:id", put_handler);
+    
+    // DELETE routes
+    app.delete(&app, "/users/:id", delete_handler);
+    
+    // PATCH routes
+    app.patch(&app, "/users/:id", patch_handler);
+    
+    // OPTIONS routes (for CORS)
+    app.options(&app, "/api", options_handler);
+    
     app.listen(&app, 3000);
 
     free(app.router.layers);

@@ -26,6 +26,26 @@ void app_post(App *app, const char *path, Handler handler) {
     router_add_layer(&app->router, "POST", path, handler);
 }
 
+void app_put(App *app, const char *path, Handler handler) {
+    printf("[DEBUG] app_put: path=%s\n", path);
+    router_add_layer(&app->router, "PUT", path, handler);
+}
+
+void app_delete(App *app, const char *path, Handler handler) {
+    printf("[DEBUG] app_delete: path=%s\n", path);
+    router_add_layer(&app->router, "DELETE", path, handler);
+}
+
+void app_patch(App *app, const char *path, Handler handler) {
+    printf("[DEBUG] app_patch: path=%s\n", path);
+    router_add_layer(&app->router, "PATCH", path, handler);
+}
+
+void app_options(App *app, const char *path, Handler handler) {
+    printf("[DEBUG] app_options: path=%s\n", path);
+    router_add_layer(&app->router, "OPTIONS", path, handler);
+}
+
 void app_use(App *app, Handler handler) {
     printf("[DEBUG] app_use: registering middleware\n");
     router_add_layer(&app->router, "USE", "/", handler);
@@ -83,6 +103,10 @@ App create_app() {
     app.router.capacity = 0;
     app.get = app_get;
     app.post = app_post;
+    app.put = app_put;
+    app.delete = app_delete;
+    app.patch = app_patch;
+    app.options = app_options;
     app.listen = app_listen;
     app.use = app_use;
 
