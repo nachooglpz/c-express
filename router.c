@@ -1,5 +1,6 @@
 #include "router.h"
 #include "layer.h"
+#include "response.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -46,25 +47,39 @@ void router_handle(Router *router, const char *method, const char *path, int cli
     printf("[DEBUG] router_handle: method=%s, path=%s\n", method, path);
     int *matches = malloc(router->layer_count * sizeof(int));
     int match_count = 0;
+    int route_match_count = 0;  // Count only non-middleware matches
+    
     for (int i = 0; i < router->layer_count; i++) {
         if (layer_match(&router->layers[i], method, path)) {
             matches[match_count++] = i;
+            // Count non-middleware matches (routes that aren't "USE")
+            if (strcmp(router->layers[i].method, "USE") != 0) {
+                route_match_count++;
+            }
         }
     }
-    printf("[DEBUG] router_handle: match_count=%d\n", match_count);
+    printf("[DEBUG] router_handle: match_count=%d, route_match_count=%d\n", match_count, route_match_count);
 
-    NextContext ctx = { router, matches, match_count, client_fd, 0, req, NULL };
+    NextContext ctx = { router, matches, match_count, client_fd, 0, req, &route_match_count };
 
     if (match_count > 0) {
         next_handler(&ctx);
+        
+        // If we only had middleware matches but no route matches, send 404
+        if (route_match_count == 0) {
+            Response *res = create_response(client_fd);
+            response_set_header(res, "Content-Type", "application/json");
+            response_status(res, 404);
+            response_send(res, "{\"error\":\"Not Found\",\"message\":\"The requested endpoint was not found\"}");
+            destroy_response(res);
+        }
     } else {
-        const char *response =
-            "HTTP/1.1 404 Not Found\r\n"
-            "Content-Type: text/plain\r\n"
-            "Content-Length: 9\r\n"
-            "\r\n"
-            "Not Found";
-        write(client_fd, response, strlen(response));
+        // No matching routes found - send 404
+        Response *res = create_response(client_fd);
+        response_set_header(res, "Content-Type", "application/json");
+        response_status(res, 404);
+        response_send(res, "{\"error\":\"Not Found\",\"message\":\"The requested endpoint was not found\"}");
+        destroy_response(res);
     }
     free(matches);
 }

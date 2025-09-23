@@ -89,6 +89,9 @@ void post_handler(int client_fd, void (*next)(void *), void *context) {
     printf("[DEBUG] post_handler: sending response\n");
     printf("[DEBUG] post_handler: request body: %s\n", req->body);
     
+    // Set 201 Created status for POST requests
+    res->status(res, 201);
+    
     // Echo the request body
     char response_body[512];
     snprintf(response_body, sizeof(response_body), 
@@ -161,6 +164,26 @@ void options_handler(int client_fd, void (*next)(void *), void *context) {
     res->send(res, "");
 }
 
+// handler for GET /status/:code - demonstrates different status codes
+void status_test_handler(int client_fd, void (*next)(void *), void *context) {
+    NextContext *ctx = (NextContext *)context;
+    Response *res = (Response *)ctx->user_context;
+    Request *req = ctx->req;
+    
+    const char *status_code_str = req->get_param(req, "code");
+    
+    if (status_code_str) {
+        int status_code = atoi(status_code_str);
+        printf("[DEBUG] status_test_handler: setting status %d\n", status_code);
+        
+        // Use send_status to send just the status text
+        res->send_status(res, status_code);
+    } else {
+        res->status(res, 400);
+        res->send(res, "Bad Request: status code parameter required");
+    }
+}
+
 int main() {
     App app = create_app();
 
@@ -172,6 +195,7 @@ int main() {
     app.get(&app, "/2", hello_handler2);
     app.get(&app, "/users/:id", user_handler);
     app.get(&app, "/json", json_handler);
+    app.get(&app, "/status/:code", status_test_handler);  // Test different status codes
     
     // POST routes
     app.post(&app, "/post", post_handler);
