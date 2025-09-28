@@ -870,3 +870,528 @@ void free_validation_error(ValidationError *error) {
     free(error->error_message);
     free(error->provided_value);
 }
+
+// ============================================================================
+// ROUTE METADATA IMPLEMENTATION
+// ============================================================================
+
+// Create new route metadata structure
+RouteMetadata* create_route_metadata(void) {
+    RouteMetadata *metadata = malloc(sizeof(RouteMetadata));
+    if (!metadata) return NULL;
+    
+    metadata->summary = NULL;
+    metadata->description = NULL;
+    metadata->tags = NULL;
+    metadata->tag_count = 0;
+    metadata->parameters = NULL;
+    metadata->param_doc_count = 0;
+    metadata->responses = NULL;
+    metadata->response_count = 0;
+    metadata->deprecated_reason = NULL;
+    metadata->examples = NULL;
+    metadata->example_count = 0;
+    metadata->custom_data = NULL;
+    
+    return metadata;
+}
+
+// Set route summary
+void set_route_summary(RouteMetadata *metadata, const char *summary) {
+    if (!metadata || !summary) return;
+    
+    free(metadata->summary);
+    metadata->summary = strdup(summary);
+}
+
+// Set route description
+void set_route_description(RouteMetadata *metadata, const char *description) {
+    if (!metadata || !description) return;
+    
+    free(metadata->description);
+    metadata->description = strdup(description);
+}
+
+// Add a tag to route metadata
+void add_route_tag(RouteMetadata *metadata, const char *tag) {
+    if (!metadata || !tag) return;
+    
+    metadata->tags = realloc(metadata->tags, sizeof(char*) * (metadata->tag_count + 2));
+    metadata->tags[metadata->tag_count] = strdup(tag);
+    metadata->tag_count++;
+    metadata->tags[metadata->tag_count] = NULL; // NULL-terminate
+}
+
+// Add parameter documentation
+void add_parameter_doc(RouteMetadata *metadata, const char *name, ParameterType type,
+                       int required, const char *description, const char *example) {
+    if (!metadata || !name) return;
+    
+    metadata->parameters = realloc(metadata->parameters, 
+                                  sizeof(ParameterDoc) * (metadata->param_doc_count + 1));
+    
+    ParameterDoc *param = &metadata->parameters[metadata->param_doc_count];
+    param->name = strdup(name);
+    param->type = type;
+    param->required = required;
+    param->description = description ? strdup(description) : NULL;
+    param->example = example ? strdup(example) : NULL;
+    param->constraints = NULL;
+    
+    metadata->param_doc_count++;
+}
+
+// Add response documentation
+void add_response_doc(RouteMetadata *metadata, int status_code, const char *description,
+                      const char *content_type, const char *example) {
+    if (!metadata) return;
+    
+    metadata->responses = realloc(metadata->responses,
+                                 sizeof(ResponseDoc) * (metadata->response_count + 1));
+    
+    ResponseDoc *response = &metadata->responses[metadata->response_count];
+    response->status_code = status_code;
+    response->description = description ? strdup(description) : NULL;
+    response->content_type = content_type ? strdup(content_type) : NULL;
+    response->example = example ? strdup(example) : NULL;
+    
+    metadata->response_count++;
+}
+
+// Mark route as deprecated
+void set_route_deprecated(RouteMetadata *metadata, const char *reason) {
+    if (!metadata) return;
+    
+    free(metadata->deprecated_reason);
+    metadata->deprecated_reason = reason ? strdup(reason) : strdup("This route is deprecated");
+}
+
+// Add example request
+void add_route_example(RouteMetadata *metadata, const char *example) {
+    if (!metadata || !example) return;
+    
+    metadata->examples = realloc(metadata->examples, sizeof(char*) * (metadata->example_count + 2));
+    metadata->examples[metadata->example_count] = strdup(example);
+    metadata->example_count++;
+    metadata->examples[metadata->example_count] = NULL; // NULL-terminate
+}
+
+// Free route metadata
+void free_route_metadata(RouteMetadata *metadata) {
+    if (!metadata) return;
+    
+    free(metadata->summary);
+    free(metadata->description);
+    
+    // Free tags
+    if (metadata->tags) {
+        for (int i = 0; i < metadata->tag_count; i++) {
+            free(metadata->tags[i]);
+        }
+        free(metadata->tags);
+    }
+    
+    // Free parameter documentation
+    if (metadata->parameters) {
+        for (int i = 0; i < metadata->param_doc_count; i++) {
+            ParameterDoc *param = &metadata->parameters[i];
+            free(param->name);
+            free(param->description);
+            free(param->example);
+            // Note: constraints are managed separately
+        }
+        free(metadata->parameters);
+    }
+    
+    // Free response documentation
+    if (metadata->responses) {
+        for (int i = 0; i < metadata->response_count; i++) {
+            ResponseDoc *response = &metadata->responses[i];
+            free(response->description);
+            free(response->content_type);
+            free(response->example);
+        }
+        free(metadata->responses);
+    }
+    
+    free(metadata->deprecated_reason);
+    
+    // Free examples
+    if (metadata->examples) {
+        for (int i = 0; i < metadata->example_count; i++) {
+            free(metadata->examples[i]);
+        }
+        free(metadata->examples);
+    }
+    
+    free(metadata);
+}
+
+// Generate OpenAPI JSON for a single route
+char* generate_route_openapi_json(const Route *route, const char *base_path) {
+    if (!route || !route->pattern || !base_path) return NULL;
+    
+    size_t buffer_size = 4096;
+    char *json = malloc(buffer_size);
+    if (!json) return NULL;
+    
+    size_t pos = 0;
+    
+    // Helper macro for safe string appending
+    #define APPEND_STR(str) do { \
+        size_t len = strlen(str); \
+        if (pos + len >= buffer_size) { \
+            buffer_size = (pos + len + 1) * 2; \
+            json = realloc(json, buffer_size); \
+            if (!json) return NULL; \
+        } \
+        strcpy(json + pos, str); \
+        pos += len; \
+    } while(0)
+    
+    APPEND_STR("{\n");
+    
+    // Add path
+    char path_str[512];
+    snprintf(path_str, sizeof(path_str), "  \"path\": \"%s%s\",\n", 
+             base_path, route->pattern->original_pattern);
+    APPEND_STR(path_str);
+    
+    // Add route ID if available
+    if (route->route_id) {
+        char id_str[256];
+        snprintf(id_str, sizeof(id_str), "  \"operationId\": \"%s\",\n", route->route_id);
+        APPEND_STR(id_str);
+    }
+    
+    // Add metadata if available
+    if (route->metadata) {
+        RouteMetadata *meta = route->metadata;
+        
+        if (meta->summary) {
+            char summary_str[512];
+            snprintf(summary_str, sizeof(summary_str), "  \"summary\": \"%s\",\n", meta->summary);
+            APPEND_STR(summary_str);
+        }
+        
+        if (meta->description) {
+            char desc_str[1024];
+            snprintf(desc_str, sizeof(desc_str), "  \"description\": \"%s\",\n", meta->description);
+            APPEND_STR(desc_str);
+        }
+        
+        // Add tags
+        if (meta->tags && meta->tag_count > 0) {
+            APPEND_STR("  \"tags\": [");
+            for (int i = 0; i < meta->tag_count; i++) {
+                char tag_str[128];
+                snprintf(tag_str, sizeof(tag_str), "\"%s\"%s", 
+                        meta->tags[i], (i < meta->tag_count - 1) ? ", " : "");
+                APPEND_STR(tag_str);
+            }
+            APPEND_STR("],\n");
+        }
+        
+        // Add parameters
+        if (meta->parameters && meta->param_doc_count > 0) {
+            APPEND_STR("  \"parameters\": [\n");
+            for (int i = 0; i < meta->param_doc_count; i++) {
+                ParameterDoc *param = &meta->parameters[i];
+                APPEND_STR("    {\n");
+                
+                char param_info[512];
+                snprintf(param_info, sizeof(param_info),
+                        "      \"name\": \"%s\",\n"
+                        "      \"required\": %s,\n"
+                        "      \"type\": \"%s\"",
+                        param->name,
+                        param->required ? "true" : "false",
+                        param->type == PARAM_NUMBER ? "integer" : "string");
+                APPEND_STR(param_info);
+                
+                if (param->description) {
+                    char desc_str[256];
+                    snprintf(desc_str, sizeof(desc_str), ",\n      \"description\": \"%s\"", param->description);
+                    APPEND_STR(desc_str);
+                }
+                
+                if (param->example) {
+                    char example_str[256];
+                    snprintf(example_str, sizeof(example_str), ",\n      \"example\": \"%s\"", param->example);
+                    APPEND_STR(example_str);
+                }
+                
+                APPEND_STR("\n    }");
+                if (i < meta->param_doc_count - 1) APPEND_STR(",");
+                APPEND_STR("\n");
+            }
+            APPEND_STR("  ],\n");
+        }
+        
+        // Add responses
+        if (meta->responses && meta->response_count > 0) {
+            APPEND_STR("  \"responses\": {\n");
+            for (int i = 0; i < meta->response_count; i++) {
+                ResponseDoc *resp = &meta->responses[i];
+                char resp_str[1024];
+                snprintf(resp_str, sizeof(resp_str),
+                        "    \"%d\": {\n"
+                        "      \"description\": \"%s\"",
+                        resp->status_code,
+                        resp->description ? resp->description : "Response");
+                APPEND_STR(resp_str);
+                
+                if (resp->content_type) {
+                    char content_str[256];
+                    snprintf(content_str, sizeof(content_str), ",\n      \"content-type\": \"%s\"", resp->content_type);
+                    APPEND_STR(content_str);
+                }
+                
+                if (resp->example) {
+                    char example_str[512];
+                    snprintf(example_str, sizeof(example_str), ",\n      \"example\": \"%s\"", resp->example);
+                    APPEND_STR(example_str);
+                }
+                
+                APPEND_STR("\n    }");
+                if (i < meta->response_count - 1) APPEND_STR(",");
+                APPEND_STR("\n");
+            }
+            APPEND_STR("  },\n");
+        }
+        
+        // Add deprecated flag
+        if (meta->deprecated_reason) {
+            APPEND_STR("  \"deprecated\": true,\n");
+            char deprecated_str[512];
+            snprintf(deprecated_str, sizeof(deprecated_str), "  \"x-deprecated-reason\": \"%s\",\n", meta->deprecated_reason);
+            APPEND_STR(deprecated_str);
+        }
+    }
+    
+    // Remove trailing comma if present
+    if (pos > 2 && json[pos-2] == ',') {
+        json[pos-2] = '\n';
+        pos--;
+    }
+    
+    APPEND_STR("}\n");
+    
+    #undef APPEND_STR
+    
+    return json;
+}
+
+// Print route information to console
+void print_route_info(const Route *route) {
+    if (!route || !route->pattern) return;
+    
+    printf("=== Route Information ===\n");
+    printf("Pattern: %s\n", route->pattern->original_pattern);
+    
+    if (route->route_id) {
+        printf("ID: %s\n", route->route_id);
+    }
+    
+    if (route->metadata) {
+        RouteMetadata *meta = route->metadata;
+        
+        if (meta->summary) {
+            printf("Summary: %s\n", meta->summary);
+        }
+        
+        if (meta->description) {
+            printf("Description: %s\n", meta->description);
+        }
+        
+        if (meta->tags && meta->tag_count > 0) {
+            printf("Tags: ");
+            for (int i = 0; i < meta->tag_count; i++) {
+                printf("%s%s", meta->tags[i], (i < meta->tag_count - 1) ? ", " : "");
+            }
+            printf("\n");
+        }
+        
+        if (meta->parameters && meta->param_doc_count > 0) {
+            printf("Parameters:\n");
+            for (int i = 0; i < meta->param_doc_count; i++) {
+                ParameterDoc *param = &meta->parameters[i];
+                printf("  - %s (%s)%s", param->name,
+                       param->type == PARAM_NUMBER ? "number" : 
+                       param->type == PARAM_SLUG ? "slug" :
+                       param->type == PARAM_UUID ? "uuid" : "string",
+                       param->required ? " *required*" : " *optional*");
+                
+                if (param->description) {
+                    printf(" - %s", param->description);
+                }
+                if (param->example) {
+                    printf(" (e.g., %s)", param->example);
+                }
+                printf("\n");
+            }
+        }
+        
+        if (meta->responses && meta->response_count > 0) {
+            printf("Responses:\n");
+            for (int i = 0; i < meta->response_count; i++) {
+                ResponseDoc *resp = &meta->responses[i];
+                printf("  - %d: %s", resp->status_code, 
+                       resp->description ? resp->description : "No description");
+                if (resp->content_type) {
+                    printf(" (%s)", resp->content_type);
+                }
+                printf("\n");
+            }
+        }
+        
+        if (meta->deprecated_reason) {
+            printf("⚠️  DEPRECATED: %s\n", meta->deprecated_reason);
+        }
+        
+        if (meta->examples && meta->example_count > 0) {
+            printf("Examples:\n");
+            for (int i = 0; i < meta->example_count; i++) {
+                printf("  %s\n", meta->examples[i]);
+            }
+        }
+    }
+    
+    printf("Priority: %d\n", route->pattern->priority);
+    printf("Parameters: %d\n", route->pattern->param_count);
+    printf("Has Wildcards: %s\n", route->pattern->has_wildcards ? "yes" : "no");
+    printf("========================\n\n");
+}
+
+// Find routes by tag
+Route** find_routes_by_tag(Route **routes, int route_count, const char *tag, int *found_count) {
+    if (!routes || !tag || !found_count) return NULL;
+    
+    Route **found_routes = malloc(sizeof(Route*) * route_count);
+    if (!found_routes) return NULL;
+    
+    *found_count = 0;
+    
+    for (int i = 0; i < route_count; i++) {
+        Route *route = routes[i];
+        if (!route || !route->metadata || !route->metadata->tags) continue;
+        
+        // Check if route has the specified tag
+        for (int j = 0; j < route->metadata->tag_count; j++) {
+            if (strcmp(route->metadata->tags[j], tag) == 0) {
+                found_routes[*found_count] = route;
+                (*found_count)++;
+                break;
+            }
+        }
+    }
+    
+    if (*found_count == 0) {
+        free(found_routes);
+        return NULL;
+    }
+    
+    // Resize array to actual found count
+    found_routes = realloc(found_routes, sizeof(Route*) * (*found_count));
+    return found_routes;
+}
+
+// Find route by ID
+Route* find_route_by_id(Route **routes, int route_count, const char *route_id) {
+    if (!routes || !route_id) return NULL;
+    
+    for (int i = 0; i < route_count; i++) {
+        Route *route = routes[i];
+        if (route && route->route_id && strcmp(route->route_id, route_id) == 0) {
+            return route;
+        }
+    }
+    
+    return NULL;
+}
+
+// Generate documentation for multiple routes
+char* generate_routes_documentation(Route **routes, int route_count) {
+    if (!routes || route_count == 0) return NULL;
+    
+    size_t buffer_size = 8192;
+    char *doc = malloc(buffer_size);
+    if (!doc) return NULL;
+    
+    size_t pos = 0;
+    
+    // Helper macro for safe string appending
+    #define APPEND_STR(str) do { \
+        size_t len = strlen(str); \
+        if (pos + len >= buffer_size) { \
+            buffer_size = (pos + len + 1) * 2; \
+            doc = realloc(doc, buffer_size); \
+            if (!doc) return NULL; \
+        } \
+        strcpy(doc + pos, str); \
+        pos += len; \
+    } while(0)
+    
+    APPEND_STR("# API Routes Documentation\n\n");
+    
+    // Group routes by tags
+    char header[256];
+    snprintf(header, sizeof(header), "Total Routes: %d\n\n", route_count);
+    APPEND_STR(header);
+    
+    for (int i = 0; i < route_count; i++) {
+        Route *route = routes[i];
+        if (!route || !route->pattern) continue;
+        
+        char route_header[512];
+        snprintf(route_header, sizeof(route_header), "## Route %d: %s\n", 
+                i + 1, route->pattern->original_pattern);
+        APPEND_STR(route_header);
+        
+        if (route->route_id) {
+            char id_str[256];
+            snprintf(id_str, sizeof(id_str), "**ID:** %s\n", route->route_id);
+            APPEND_STR(id_str);
+        }
+        
+        if (route->metadata) {
+            RouteMetadata *meta = route->metadata;
+            
+            if (meta->summary) {
+                char summary_str[512];
+                snprintf(summary_str, sizeof(summary_str), "**Summary:** %s\n", meta->summary);
+                APPEND_STR(summary_str);
+            }
+            
+            if (meta->description) {
+                char desc_str[1024];
+                snprintf(desc_str, sizeof(desc_str), "**Description:** %s\n", meta->description);
+                APPEND_STR(desc_str);
+            }
+            
+            if (meta->tags && meta->tag_count > 0) {
+                APPEND_STR("**Tags:** ");
+                for (int j = 0; j < meta->tag_count; j++) {
+                    char tag_str[128];
+                    snprintf(tag_str, sizeof(tag_str), "`%s`%s", 
+                            meta->tags[j], (j < meta->tag_count - 1) ? ", " : "");
+                    APPEND_STR(tag_str);
+                }
+                APPEND_STR("\n");
+            }
+            
+            if (meta->deprecated_reason) {
+                char deprecated_str[512];
+                snprintf(deprecated_str, sizeof(deprecated_str), 
+                        "⚠️ **DEPRECATED:** %s\n", meta->deprecated_reason);
+                APPEND_STR(deprecated_str);
+            }
+        }
+        
+        APPEND_STR("\n---\n\n");
+    }
+    
+    #undef APPEND_STR
+    
+    return doc;
+}

@@ -26,4 +26,7 @@ test_pattern: test_pattern.c $(filter-out main.o,$(OBJ))
 test_subrouters: test_subrouters.c $(filter-out main.o,$(OBJ))
 	$(CC) $(CFLAGS) -o $@ $^
 
+test_route_metadata: test_route_metadata.c $(filter-out main.o,$(OBJ))
+	$(CC) $(CFLAGS) -o $@ $^
+
 .PHONY: all clean

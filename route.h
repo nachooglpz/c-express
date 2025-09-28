@@ -92,10 +92,44 @@ typedef struct {
     char *wildcard_path;  // Captured wildcard portion
 } RouteMatch;
 
-// Route structure
+// Route metadata structures
+typedef struct {
+    char *name;                    // Parameter name
+    ParameterType type;           // Parameter type
+    int required;                 // Is parameter required?
+    char *description;            // Parameter description
+    char *example;                // Example value
+    RouteConstraint *constraints; // Parameter constraints
+} ParameterDoc;
+
+typedef struct {
+    int status_code;              // HTTP status code (200, 404, etc.)
+    char *description;            // Response description
+    char *content_type;           // Response content type
+    char *example;                // Example response body
+} ResponseDoc;
+
+typedef struct {
+    char *summary;                // Brief description
+    char *description;            // Detailed description
+    char **tags;                  // Array of tags (NULL-terminated)
+    int tag_count;                // Number of tags
+    ParameterDoc *parameters;     // Parameter documentation
+    int param_doc_count;          // Number of documented parameters
+    ResponseDoc *responses;       // Response documentation
+    int response_count;           // Number of documented responses
+    char *deprecated_reason;      // If route is deprecated
+    char **examples;              // Example requests (NULL-terminated)
+    int example_count;            // Number of examples
+    void *custom_data;            // Extension point for custom metadata
+} RouteMetadata;
+
+// Enhanced route structure with metadata
 typedef struct {
     RoutePattern *pattern;
     Layer layer;
+    RouteMetadata *metadata;      // Route documentation/metadata
+    char *route_id;               // Unique identifier for the route
 } Route;
 
 // Function declarations
@@ -128,5 +162,25 @@ RoutePattern* compile_route_pattern_with_constraints(const char *pattern);
 // Internal constraint parsing functions
 ParameterType parse_parameter_type_and_constraints(char *param_name, RouteParam *param);
 void parse_parameter_constraints(const char *constraint_str, RouteParam *param);
+
+// Route metadata functions
+RouteMetadata* create_route_metadata(void);
+void set_route_summary(RouteMetadata *metadata, const char *summary);
+void set_route_description(RouteMetadata *metadata, const char *description);
+void add_route_tag(RouteMetadata *metadata, const char *tag);
+void add_parameter_doc(RouteMetadata *metadata, const char *name, ParameterType type, 
+                       int required, const char *description, const char *example);
+void add_response_doc(RouteMetadata *metadata, int status_code, const char *description,
+                      const char *content_type, const char *example);
+void set_route_deprecated(RouteMetadata *metadata, const char *reason);
+void add_route_example(RouteMetadata *metadata, const char *example);
+void free_route_metadata(RouteMetadata *metadata);
+
+// Route documentation and introspection
+char* generate_route_openapi_json(const Route *route, const char *base_path);
+char* generate_routes_documentation(Route **routes, int route_count);
+void print_route_info(const Route *route);
+Route** find_routes_by_tag(Route **routes, int route_count, const char *tag, int *found_count);
+Route* find_route_by_id(Route **routes, int route_count, const char *route_id);
 
 #endif

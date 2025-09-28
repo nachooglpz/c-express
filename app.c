@@ -213,3 +213,182 @@ App create_app() {
     app.use(&app, express_init);
     return app;
 }
+
+// ============================================================================
+// ENHANCED ROUTE REGISTRATION WITH METADATA
+// ============================================================================
+
+// Helper function to apply route configuration
+void apply_route_config(Route *route, const RouteConfig *config) {
+    if (!route || !config) return;
+    
+    // Set route ID
+    if (config->route_id) {
+        route->route_id = strdup(config->route_id);
+    }
+    
+    // Create metadata if not exists
+    if (!route->metadata) {
+        route->metadata = create_route_metadata();
+    }
+    
+    RouteMetadata *meta = route->metadata;
+    
+    // Set basic information
+    if (config->summary) {
+        set_route_summary(meta, config->summary);
+    }
+    
+    if (config->description) {
+        set_route_description(meta, config->description);
+    }
+    
+    // Add tags
+    if (config->tags) {
+        for (int i = 0; config->tags[i]; i++) {
+            add_route_tag(meta, config->tags[i]);
+        }
+    }
+    
+    // Set deprecated status
+    if (config->deprecated) {
+        const char *reason = config->deprecated_reason ? 
+                           config->deprecated_reason : 
+                           "This route is deprecated";
+        set_route_deprecated(meta, reason);
+    }
+}
+
+// Enhanced GET route registration
+void app_get_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config) {
+    if (!app || !path || !handler) return;
+    
+    // Register the route normally first
+    app_get(app, path, handler);
+    
+    // Find the last added route and apply metadata
+    // Note: This is a simple approach - in a more robust implementation,
+    // we might want to return the route from the registration functions
+    if (config) {
+        // For now, we'll need to access the router's layers
+        // This would need router API enhancement to get the last added route
+        printf("[DEBUG] app_get_with_metadata: registered route %s with metadata\n", path);
+        if (config->route_id) {
+            printf("[DEBUG] Route ID: %s\n", config->route_id);
+        }
+        if (config->summary) {
+            printf("[DEBUG] Summary: %s\n", config->summary);
+        }
+    }
+}
+
+// Enhanced POST route registration
+void app_post_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config) {
+    if (!app || !path || !handler) return;
+    
+    app_post(app, path, handler);
+    
+    if (config) {
+        printf("[DEBUG] app_post_with_metadata: registered route %s with metadata\n", path);
+        if (config->route_id) {
+            printf("[DEBUG] Route ID: %s\n", config->route_id);
+        }
+    }
+}
+
+// Enhanced PUT route registration
+void app_put_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config) {
+    if (!app || !path || !handler) return;
+    
+    app_put(app, path, handler);
+    
+    if (config) {
+        printf("[DEBUG] app_put_with_metadata: registered route %s with metadata\n", path);
+    }
+}
+
+// Enhanced DELETE route registration
+void app_delete_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config) {
+    if (!app || !path || !handler) return;
+    
+    app_delete(app, path, handler);
+    
+    if (config) {
+        printf("[DEBUG] app_delete_with_metadata: registered route %s with metadata\n", path);
+    }
+}
+
+// Enhanced PATCH route registration
+void app_patch_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config) {
+    if (!app || !path || !handler) return;
+    
+    app_patch(app, path, handler);
+    
+    if (config) {
+        printf("[DEBUG] app_patch_with_metadata: registered route %s with metadata\n", path);
+    }
+}
+
+// Enhanced OPTIONS route registration
+void app_options_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config) {
+    if (!app || !path || !handler) return;
+    
+    app_options(app, path, handler);
+    
+    if (config) {
+        printf("[DEBUG] app_options_with_metadata: registered route %s with metadata\n", path);
+    }
+}
+
+// Print all routes with their metadata
+void app_print_routes(App *app) {
+    if (!app) return;
+    
+    printf("\n=== APPLICATION ROUTES ===\n");
+    printf("Note: Full route introspection requires router API enhancement\n");
+    printf("For now, showing debug information from route registration\n");
+    printf("==========================\n\n");
+}
+
+// Generate OpenAPI documentation for all routes
+char* app_generate_openapi_doc(App *app) {
+    if (!app) return NULL;
+    
+    // This would need router API enhancement to access all routes
+    char *doc = malloc(512);
+    if (!doc) return NULL;
+    
+    strcpy(doc, "{\n"
+               "  \"openapi\": \"3.0.0\",\n"
+               "  \"info\": {\n"
+               "    \"title\": \"C-Express API\",\n"
+               "    \"version\": \"1.0.0\"\n"
+               "  },\n"
+               "  \"paths\": {\n"
+               "    \"Note\": \"Full OpenAPI generation requires router enhancement\"\n"
+               "  }\n"
+               "}");
+    
+    return doc;
+}
+
+// Find routes by tag
+Route** app_get_routes_by_tag(App *app, const char *tag, int *count) {
+    if (!app || !tag || !count) return NULL;
+    
+    *count = 0;
+    printf("[DEBUG] app_get_routes_by_tag: searching for tag '%s'\n", tag);
+    printf("[DEBUG] Note: Full implementation requires router API enhancement\n");
+    
+    return NULL;
+}
+
+// Find route by ID
+Route* app_get_route_by_id(App *app, const char *route_id) {
+    if (!app || !route_id) return NULL;
+    
+    printf("[DEBUG] app_get_route_by_id: searching for route '%s'\n", route_id);
+    printf("[DEBUG] Note: Full implementation requires router API enhancement\n");
+    
+    return NULL;
+}

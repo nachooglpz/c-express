@@ -42,4 +42,28 @@ void app_handle_request(App *app, const char *method, const char *path, int clie
 
 App create_app();
 
+// Enhanced route registration with metadata support
+typedef struct {
+    const char *route_id;
+    const char *summary;
+    const char *description;
+    const char **tags;
+    int deprecated;
+    const char *deprecated_reason;
+} RouteConfig;
+
+// Enhanced route registration functions
+void app_get_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config);
+void app_post_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config);
+void app_put_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config);
+void app_delete_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config);
+void app_patch_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config);
+void app_options_with_metadata(App *app, const char *path, Handler handler, const RouteConfig *config);
+
+// Documentation and introspection functions
+void app_print_routes(App *app);
+char* app_generate_openapi_doc(App *app);
+Route** app_get_routes_by_tag(App *app, const char *tag, int *count);
+Route* app_get_route_by_id(App *app, const char *route_id);
+
 #endif
