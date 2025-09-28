@@ -64,6 +64,23 @@ int layer_match(Layer *layer, const char *method, const char *path) {
         return 1; // always match for middleware
     }
 
+    // Handle mounted routers
+    if (layer->type == LAYER_ROUTER && layer->mount_prefix) {
+        // Check if path starts with mount prefix
+        size_t prefix_len = strlen(layer->mount_prefix);
+        if (strncmp(path, layer->mount_prefix, prefix_len) == 0) {
+            // Path matches prefix, this router should handle it
+            printf("[DEBUG] layer_match: router match=1 for method=%s, path=%s, mount_prefix=%s\n",
+                   method, path, layer->mount_prefix);
+            return 1;
+        } else {
+            printf("[DEBUG] layer_match: router match=0 for method=%s, path=%s, mount_prefix=%s\n",
+                   method, path, layer->mount_prefix);
+            return 0;
+        }
+    }
+
+    // Handle regular handlers
     int method_match = strcmp(layer->method, method) == 0;
     int path_match = path_matches_pattern(layer->path, path);
     int match = method_match && path_match;

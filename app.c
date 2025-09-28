@@ -99,6 +99,11 @@ void app_use(App *app, Handler handler) {
     router_add_layer(&app->router, "USE", "/", handler);
 }
 
+void app_mount(App *app, const char *prefix, Router *router) {
+    printf("[DEBUG] app_mount: mounting router at prefix=%s\n", prefix);
+    router_mount(&app->router, prefix, router);
+}
+
 void app_error(App *app, ErrorHandler handler) {
     printf("[DEBUG] app_error: registering error handler\n");
     app->error_handler = handler;
@@ -201,6 +206,7 @@ App create_app() {
     app.options = app_options;
     app.listen = app_listen;
     app.use = app_use;
+    app.mount = app_mount;
     app.error = app_error;
 
     // automatically register express_init middleware

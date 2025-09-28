@@ -7,6 +7,37 @@
 #include <stdio.h>
 #include <unistd.h>
 
+Router *create_router() {
+    Router *router = malloc(sizeof(Router));
+    if (!router) return NULL;
+    
+    router->layers = NULL;
+    router->layer_count = 0;
+    router->capacity = 0;
+    
+    // Set method pointers
+    router->get = router_get;
+    router->post = router_post;
+    router->put = router_put;
+    router->delete = router_delete;
+    router->patch = router_patch;
+    router->options = router_options;
+    router->use = router_use;
+    
+    printf("[DEBUG] create_router: new router created\n");
+    return router;
+}
+
+void destroy_router(Router *router) {
+    if (router) {
+        if (router->layers) {
+            free(router->layers);
+        }
+        free(router);
+        printf("[DEBUG] destroy_router: router destroyed\n");
+    }
+}
+
 void router_add_layer(Router *router, const char *method, const char *path, Handler handler) {
     if (router->layer_count >= router->capacity) {
         int new_capacity = router->capacity == 0 ? 4 : router->capacity * 2;
@@ -21,8 +52,33 @@ void router_add_layer(Router *router, const char *method, const char *path, Hand
 
     router->layers[router->layer_count].method = method;
     router->layers[router->layer_count].path = path;
-    router->layers[router->layer_count].handler = handler;
+    router->layers[router->layer_count].type = LAYER_HANDLER;
+    router->layers[router->layer_count].data.handler = handler;
+    router->layers[router->layer_count].mount_prefix = NULL;
     router->layer_count++;
+}
+
+void router_mount(Router *parent, const char *prefix, Router *child) {
+    if (parent->layer_count >= parent->capacity) {
+        int new_capacity = parent->capacity == 0 ? 4 : parent->capacity * 2;
+        Layer *new_layers = realloc(parent->layers, new_capacity * sizeof(Layer));
+        if (!new_layers) {
+            return;
+        }
+        parent->layers = new_layers;
+        parent->capacity = new_capacity;
+    }
+
+    // Create a layer that represents the mounted router
+    Layer *layer = &parent->layers[parent->layer_count];
+    layer->method = "MOUNT";  // Special method for mounted routers
+    layer->path = prefix;
+    layer->type = LAYER_ROUTER;
+    layer->data.router = child;
+    layer->mount_prefix = strdup(prefix);  // Store a copy of the prefix
+    parent->layer_count++;
+    
+    printf("[DEBUG] router_mount: mounted router at prefix=%s\n", prefix);
 }
 
 void next_handler(void *context) {
@@ -32,13 +88,36 @@ void next_handler(void *context) {
         int layer_idx = ctx->matches[ctx->idx++];
         Layer *layer = &ctx->router->layers[layer_idx];
         
-        // Parse URL parameters if this is a route (not middleware)
-        if (strcmp(layer->method, "USE") != 0) {
-            request_parse_params(ctx->req, layer->path, ctx->req->path);
+        if (layer->type == LAYER_ROUTER) {
+            // Handle mounted router
+            printf("[DEBUG] next_handler: routing to mounted router at prefix=%s\n", layer->mount_prefix);
+            
+            // Strip the mount prefix from the path
+            const char *sub_path = ctx->req->path;
+            size_t prefix_len = strlen(layer->mount_prefix);
+            if (strncmp(sub_path, layer->mount_prefix, prefix_len) == 0) {
+                sub_path += prefix_len;
+                // If sub_path is empty, make it "/"
+                if (*sub_path == '\0') {
+                    sub_path = "/";
+                }
+            }
+            
+            printf("[DEBUG] next_handler: sub_path=%s for mounted router\n", sub_path);
+            
+            // Route to the mounted router with the stripped path
+            router_handle(layer->data.router, ctx->req->method, sub_path, ctx->client_fd, ctx->req);
+            
+        } else {
+            // Handle regular handler
+            // Parse URL parameters if this is a route (not middleware)
+            if (strcmp(layer->method, "USE") != 0) {
+                request_parse_params(ctx->req, layer->path, ctx->req->path);
+            }
+            
+            printf("[DEBUG] next_handler: calling handler for layer_idx=%d\n", layer_idx);
+            layer->data.handler(ctx->client_fd, next_handler, ctx);
         }
-        
-        printf("[DEBUG] next_handler: calling handler for layer_idx=%d\n", layer_idx);
-        layer->handler(ctx->client_fd, next_handler, ctx);
     } else {
         printf("[DEBUG] next_handler: end of chain\n");
     }
@@ -85,6 +164,32 @@ void router_handle(Router *router, const char *method, const char *path, int cli
     free(matches);
 }
 
-void router_use(Router *router, Handler handler) {
-    router_add_layer(router, "USE", "/", handler);
+// Router method implementations for independent routing
+void router_get(Router *router, const char *path, Handler handler) {
+    router_add_layer(router, "GET", path, handler);
+}
+
+void router_post(Router *router, const char *path, Handler handler) {
+    router_add_layer(router, "POST", path, handler);
+}
+
+void router_put(Router *router, const char *path, Handler handler) {
+    router_add_layer(router, "PUT", path, handler);
+}
+
+void router_delete(Router *router, const char *path, Handler handler) {
+    router_add_layer(router, "DELETE", path, handler);
+}
+
+void router_patch(Router *router, const char *path, Handler handler) {
+    router_add_layer(router, "PATCH", path, handler);
+}
+
+void router_options(Router *router, const char *path, Handler handler) {
+    router_add_layer(router, "OPTIONS", path, handler);
+}
+
+void router_use(Router *router, const char *path, Handler handler) {
+    const char *use_path = path ? path : "/";
+    router_add_layer(router, "USE", use_path, handler);
 }

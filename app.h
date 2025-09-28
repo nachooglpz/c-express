@@ -23,6 +23,7 @@ typedef struct App {
     void (*options)(App *, const char *path, Handler handler);
     void (*listen)(App *, int port);
     void (*use)(App*, Handler handler);
+    void (*mount)(App*, const char *prefix, Router *router);  // Mount sub-router
     void (*error)(App*, ErrorHandler handler);  // Set error handler
 } App;
 
@@ -34,6 +35,7 @@ void app_delete(App *app, const char *path, Handler handler);
 void app_patch(App *app, const char *path, Handler handler);
 void app_options(App *app, const char *path, Handler handler);
 void app_use(App *app, Handler handler);
+void app_mount(App *app, const char *prefix, Router *router);
 void app_error(App *app, ErrorHandler handler);
 void app_listen(App *app, int port);
 void app_handle_request(App *app, const char *method, const char *path, int client_fd, Request *req);
