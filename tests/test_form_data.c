@@ -1,5 +1,5 @@
-#include "app.h"
-#include "form.h"
+#include "../src/core/app.h"
+#include "../src/parsers/form.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

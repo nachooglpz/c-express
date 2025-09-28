@@ -2,8 +2,8 @@
 #define REQUEST_H
 
 #include <stddef.h>
-#include "json.h"
-#include "form.h"
+#include "../parsers/json.h"
+#include "../parsers/form.h"
 
 #define MAX_HEADERS 32
 #define MAX_PARAMS 16

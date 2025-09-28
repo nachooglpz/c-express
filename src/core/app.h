@@ -2,9 +2,9 @@
 #define APP_H
 
 #include "router.h"
-#include "request.h"
-#include "response.h"
-#include "error.h"
+#include "../http/request.h"
+#include "../http/response.h"
+#include "../http/error.h"
 
 // Forward declaration
 typedef struct App App;

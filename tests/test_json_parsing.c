@@ -1,5 +1,5 @@
-#include "app.h"
-#include "json.h"
+#include "../src/core/app.h"
+#include "../src/parsers/json.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

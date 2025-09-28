@@ -1,7 +1,7 @@
 #include "router.h"
 #include "layer.h"
-#include "response.h"
-#include "error.h"
+#include "../http/response.h"
+#include "../http/error.h"
 #include "route.h"
 #include <string.h>
 #include <stdlib.h>

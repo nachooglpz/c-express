@@ -1,4 +1,4 @@
-#include "app.h"
+#include "../src/core/app.h"
 #include <stdio.h>
 
 // Handler for user by ID

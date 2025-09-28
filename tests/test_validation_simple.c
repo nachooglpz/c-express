@@ -1,5 +1,5 @@
-#include "app.h"
-#include "route.h"
+#include "../src/core/app.h"
+#include "../src/core/route.h"
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>

@@ -2,8 +2,8 @@
 #define ROUTER_H
 
 #include "route.h"
-#include "request.h"
-#include "error.h"
+#include "../http/request.h"
+#include "../http/error.h"
 
 typedef struct Router {
     Layer *layers;
