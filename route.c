@@ -99,20 +99,117 @@ int is_parameter_segment(const char *segment, char **param_name, int *is_optiona
     return 1;
 }
 
-// Parse parameter type from name (e.g., id:number)
-ParameterType parse_parameter_type(char *param_name) {
+// Enhanced parameter parsing with constraints
+ParameterType parse_parameter_type_and_constraints(char *param_name, RouteParam *param) {
     char *colon = strchr(param_name, ':');
     if (!colon) return PARAM_STRING;
     
     *colon = '\0';  // Split name and type
-    char *type_str = colon + 1;
+    char *type_and_constraints = colon + 1;
     
-    if (strcmp(type_str, "number") == 0) return PARAM_NUMBER;
-    if (strcmp(type_str, "slug") == 0) return PARAM_SLUG;
-    if (strcmp(type_str, "uuid") == 0) return PARAM_UUID;
-    if (strcmp(type_str, "any") == 0) return PARAM_ANY;
+    // Parse type (first part after colon)
+    char *constraint_start = strchr(type_and_constraints, '(');
+    ParameterType type = PARAM_STRING;
     
-    return PARAM_STRING;
+    if (constraint_start) {
+        *constraint_start = '\0';
+        constraint_start++; // Move past opening parenthesis
+    }
+    
+    // Determine parameter type
+    if (strcmp(type_and_constraints, "number") == 0) type = PARAM_NUMBER;
+    else if (strcmp(type_and_constraints, "slug") == 0) type = PARAM_SLUG;
+    else if (strcmp(type_and_constraints, "uuid") == 0) type = PARAM_UUID;
+    else if (strcmp(type_and_constraints, "any") == 0) type = PARAM_ANY;
+    
+    // Parse constraints if present
+    if (constraint_start) {
+        parse_parameter_constraints(constraint_start, param);
+    }
+    
+    return type;
+}
+
+// Parse constraints from constraint string
+void parse_parameter_constraints(const char *constraint_str, RouteParam *param) {
+    if (!constraint_str || !param) return;
+    
+    char *constraints_copy = strdup(constraint_str);
+    char *constraint = strtok(constraints_copy, ",");
+    
+    while (constraint) {
+        // Trim whitespace
+        while (*constraint == ' ') constraint++;
+        
+        // Parse different constraint types
+        if (strncmp(constraint, "min=", 4) == 0) {
+            long min_val = strtol(constraint + 4, NULL, 10);
+            RouteConstraint *c = create_min_constraint(min_val, NULL);
+            add_parameter_constraint(param, c);
+            
+        } else if (strncmp(constraint, "max=", 4) == 0) {
+            long max_val = strtol(constraint + 4, NULL, 10);
+            RouteConstraint *c = create_max_constraint(max_val, NULL);
+            add_parameter_constraint(param, c);
+            
+        } else if (strncmp(constraint, "range=", 6) == 0) {
+            char *range_str = constraint + 6;
+            char *dash = strchr(range_str, '-');
+            if (dash) {
+                *dash = '\0';
+                long min_val = strtol(range_str, NULL, 10);
+                long max_val = strtol(dash + 1, NULL, 10);
+                RouteConstraint *c = create_range_constraint(min_val, max_val, NULL);
+                add_parameter_constraint(param, c);
+            }
+            
+        } else if (strncmp(constraint, "regex=", 6) == 0) {
+            RouteConstraint *c = create_regex_constraint(constraint + 6, NULL);
+            add_parameter_constraint(param, c);
+            
+        } else if (strncmp(constraint, "enum=", 5) == 0) {
+            // Parse enum values (separated by |)
+            char *enum_str = constraint + 5;
+            // Count values
+            int count = 1;
+            for (char *p = enum_str; *p; p++) {
+                if (*p == '|') count++;
+            }
+            
+            const char **values = malloc((count + 1) * sizeof(char*));
+            char *enum_copy = strdup(enum_str);
+            char *value = strtok(enum_copy, "|");
+            int i = 0;
+            while (value && i < count) {
+                values[i++] = strdup(value);
+                value = strtok(NULL, "|");
+            }
+            values[i] = NULL;
+            
+            RouteConstraint *c = create_enum_constraint(values, NULL);
+            add_parameter_constraint(param, c);
+            
+            // Cleanup
+            for (int j = 0; j < i; j++) {
+                free((char*)values[j]);
+            }
+            free(values);
+            free(enum_copy);
+        }
+        
+        constraint = strtok(NULL, ",");
+    }
+    
+    free(constraints_copy);
+}
+
+// Legacy function for backward compatibility
+ParameterType parse_parameter_type(char *param_name) {
+    char *name_copy = strdup(param_name);
+    RouteParam dummy_param = {0};
+    ParameterType type = parse_parameter_type_and_constraints(name_copy, &dummy_param);
+    free(name_copy);
+    return type;
 }
 
 // Validate parameter value based on type
@@ -223,14 +320,22 @@ RoutePattern *compile_route_pattern(const char *pattern) {
                 seg->literal_value = NULL;
                 
                 seg->param = malloc(sizeof(RouteParam));
-                seg->param->type = parse_parameter_type(param_name);
-                seg->param->name = strdup(param_name);
                 seg->param->is_optional = is_optional;
                 seg->param->value = NULL;
+                seg->param->constraints = NULL;
+                
+                // Parse type and constraints - this will modify param_name to extract just the name part
+                char *param_copy = strdup(param_name);
+                seg->param->type = parse_parameter_type_and_constraints(param_copy, seg->param);
+                
+                // Set the name to just the parameter name (without type suffix)
+                seg->param->name = strdup(param_copy);
+                
+                free(param_copy);
                 
                 route_pattern->param_count++;
                 printf("[DEBUG] compile_route_pattern: param '%s' (type=%d, optional=%d) at %d\n", 
-                       param_name, seg->param->type, is_optional, i);
+                       seg->param->name, seg->param->type, is_optional, i);
                 
                 free(param_name);
             } else {
@@ -495,4 +600,273 @@ RouteMatch* duplicate_route_match(const RouteMatch* original) {
     copy->wildcard_path = original->wildcard_path ? strdup(original->wildcard_path) : NULL;
     
     return copy;
+}
+
+// Constraint creation functions
+RouteConstraint* create_min_constraint(long min_value, const char *error_msg) {
+    RouteConstraint *constraint = malloc(sizeof(RouteConstraint));
+    if (!constraint) return NULL;
+    
+    constraint->type = CONSTRAINT_MIN;
+    constraint->constraint.range.min_value = min_value;
+    constraint->constraint.range.max_value = 0; // Not used for MIN
+    constraint->error_message = error_msg ? strdup(error_msg) : strdup("Value is too small");
+    constraint->context = NULL;
+    constraint->next = NULL;
+    
+    return constraint;
+}
+
+RouteConstraint* create_max_constraint(long max_value, const char *error_msg) {
+    RouteConstraint *constraint = malloc(sizeof(RouteConstraint));
+    if (!constraint) return NULL;
+    
+    constraint->type = CONSTRAINT_MAX;
+    constraint->constraint.range.min_value = 0; // Not used for MAX
+    constraint->constraint.range.max_value = max_value;
+    constraint->error_message = error_msg ? strdup(error_msg) : strdup("Value is too large");
+    constraint->context = NULL;
+    constraint->next = NULL;
+    
+    return constraint;
+}
+
+RouteConstraint* create_range_constraint(long min_value, long max_value, const char *error_msg) {
+    RouteConstraint *constraint = malloc(sizeof(RouteConstraint));
+    if (!constraint) return NULL;
+    
+    constraint->type = CONSTRAINT_RANGE;
+    constraint->constraint.range.min_value = min_value;
+    constraint->constraint.range.max_value = max_value;
+    constraint->error_message = error_msg ? strdup(error_msg) : strdup("Value is out of range");
+    constraint->context = NULL;
+    constraint->next = NULL;
+    
+    return constraint;
+}
+
+RouteConstraint* create_regex_constraint(const char *pattern, const char *error_msg) {
+    RouteConstraint *constraint = malloc(sizeof(RouteConstraint));
+    if (!constraint) return NULL;
+    
+    constraint->type = CONSTRAINT_REGEX;
+    constraint->constraint.regex_pattern = strdup(pattern);
+    constraint->error_message = error_msg ? strdup(error_msg) : strdup("Invalid format");
+    constraint->context = NULL;
+    constraint->next = NULL;
+    
+    return constraint;
+}
+
+RouteConstraint* create_enum_constraint(const char **values, const char *error_msg) {
+    RouteConstraint *constraint = malloc(sizeof(RouteConstraint));
+    if (!constraint) return NULL;
+    
+    // Count values
+    int count = 0;
+    while (values[count]) count++;
+    
+    // Allocate array and copy values
+    constraint->constraint.enum_values = malloc((count + 1) * sizeof(char*));
+    for (int i = 0; i < count; i++) {
+        constraint->constraint.enum_values[i] = strdup(values[i]);
+    }
+    constraint->constraint.enum_values[count] = NULL;
+    
+    constraint->type = CONSTRAINT_ENUM;
+    constraint->error_message = error_msg ? strdup(error_msg) : strdup("Invalid value");
+    constraint->context = NULL;
+    constraint->next = NULL;
+    
+    return constraint;
+}
+
+RouteConstraint* create_custom_constraint(CustomValidator validator, void *context, const char *error_msg) {
+    RouteConstraint *constraint = malloc(sizeof(RouteConstraint));
+    if (!constraint) return NULL;
+    
+    constraint->type = CONSTRAINT_CUSTOM;
+    constraint->constraint.validator = validator;
+    constraint->error_message = error_msg ? strdup(error_msg) : strdup("Validation failed");
+    constraint->context = context;
+    constraint->next = NULL;
+    
+    return constraint;
+}
+
+// Add constraint to parameter
+void add_parameter_constraint(RouteParam *param, RouteConstraint *constraint) {
+    if (!param || !constraint) return;
+    
+    if (!param->constraints) {
+        param->constraints = constraint;
+    } else {
+        // Add to end of chain
+        RouteConstraint *current = param->constraints;
+        while (current->next) {
+            current = current->next;
+        }
+        current->next = constraint;
+    }
+}
+
+// Validate parameter against its constraints
+int validate_parameter_constraints(const RouteParam *param, ValidationError *error) {
+    if (!param || !param->constraints) return 1; // No constraints = valid
+    
+    RouteConstraint *constraint = param->constraints;
+    while (constraint) {
+        int valid = 1;
+        
+        switch (constraint->type) {
+            case CONSTRAINT_MIN: {
+                if (param->type == PARAM_NUMBER) {
+                    long value = strtol(param->value, NULL, 10);
+                    valid = (value >= constraint->constraint.range.min_value);
+                } else {
+                    // For strings, check length
+                    valid = (strlen(param->value) >= (size_t)constraint->constraint.range.min_value);
+                }
+                break;
+            }
+            
+            case CONSTRAINT_MAX: {
+                if (param->type == PARAM_NUMBER) {
+                    long value = strtol(param->value, NULL, 10);
+                    valid = (value <= constraint->constraint.range.max_value);
+                } else {
+                    // For strings, check length
+                    valid = (strlen(param->value) <= (size_t)constraint->constraint.range.max_value);
+                }
+                break;
+            }
+            
+            case CONSTRAINT_RANGE: {
+                if (param->type == PARAM_NUMBER) {
+                    long value = strtol(param->value, NULL, 10);
+                    valid = (value >= constraint->constraint.range.min_value && 
+                            value <= constraint->constraint.range.max_value);
+                } else {
+                    // For strings, check length
+                    size_t len = strlen(param->value);
+                    valid = (len >= (size_t)constraint->constraint.range.min_value && 
+                            len <= (size_t)constraint->constraint.range.max_value);
+                }
+                break;
+            }
+            
+            case CONSTRAINT_REGEX: {
+                regex_t regex;
+                int ret = regcomp(&regex, constraint->constraint.regex_pattern, REG_EXTENDED);
+                if (ret == 0) {
+                    ret = regexec(&regex, param->value, 0, NULL, 0);
+                    valid = (ret == 0);
+                    regfree(&regex);
+                } else {
+                    valid = 0; // Invalid regex = fail
+                }
+                break;
+            }
+            
+            case CONSTRAINT_ENUM: {
+                valid = 0;
+                for (int i = 0; constraint->constraint.enum_values[i]; i++) {
+                    if (strcmp(param->value, constraint->constraint.enum_values[i]) == 0) {
+                        valid = 1;
+                        break;
+                    }
+                }
+                break;
+            }
+            
+            case CONSTRAINT_CUSTOM: {
+                valid = constraint->constraint.validator(param->value, constraint->context, error);
+                break;
+            }
+        }
+        
+        if (!valid) {
+            // Fill error information
+            if (error) {
+                error->param_name = strdup(param->name);
+                error->provided_value = strdup(param->value);
+                error->failed_constraint = constraint->type;
+                if (!error->error_message) { // Custom validator might set this
+                    error->error_message = strdup(constraint->error_message);
+                }
+            }
+            return 0;
+        }
+        
+        constraint = constraint->next;
+    }
+    
+    return 1;
+}
+
+// Validate all parameters in a route match
+int validate_route_match(const RouteMatch *match, ValidationError **errors, int *error_count) {
+    if (!match || !match->matched) return 1;
+    
+    *errors = NULL;
+    *error_count = 0;
+    
+    if (match->param_count == 0) return 1;
+    
+    // Allocate array for potential errors
+    ValidationError *error_array = malloc(match->param_count * sizeof(ValidationError));
+    int actual_errors = 0;
+    
+    for (int i = 0; i < match->param_count; i++) {
+        ValidationError error = {0};
+        if (!validate_parameter_constraints(&match->params[i], &error)) {
+            error_array[actual_errors] = error;
+            actual_errors++;
+        }
+    }
+    
+    if (actual_errors > 0) {
+        *errors = realloc(error_array, actual_errors * sizeof(ValidationError));
+        *error_count = actual_errors;
+        return 0;
+    } else {
+        free(error_array);
+        return 1;
+    }
+}
+
+// Free constraint
+void free_constraint(RouteConstraint *constraint) {
+    if (!constraint) return;
+    
+    if (constraint->next) {
+        free_constraint(constraint->next);
+    }
+    
+    switch (constraint->type) {
+        case CONSTRAINT_REGEX:
+            free(constraint->constraint.regex_pattern);
+            break;
+        case CONSTRAINT_ENUM:
+            for (int i = 0; constraint->constraint.enum_values[i]; i++) {
+                free(constraint->constraint.enum_values[i]);
+            }
+            free(constraint->constraint.enum_values);
+            break;
+        default:
+            // Other types don't have allocated memory
+            break;
+    }
+    
+    free(constraint->error_message);
+    free(constraint);
+}
+
+// Free validation error
+void free_validation_error(ValidationError *error) {
+    if (!error) return;
+    
+    free(error->param_name);
+    free(error->error_message);
+    free(error->provided_value);
 }

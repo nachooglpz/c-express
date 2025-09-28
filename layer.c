@@ -105,6 +105,25 @@ int layer_match(Layer *layer, const char *method, const char *path) {
         path_match = match.matched;
         
         if (path_match) {
+            // Validate constraints if this is a route handler (not middleware)
+            if (layer->method && strcmp(layer->method, "USE") != 0) {
+                ValidationError *errors = NULL;
+                int error_count = 0;
+                
+                if (!validate_route_match(&match, &errors, &error_count)) {
+                    printf("[DEBUG] layer_match: constraint validation failed (%d errors)\n", error_count);
+                    
+                    // Free validation errors
+                    for (int i = 0; i < error_count; i++) {
+                        free_validation_error(&errors[i]);
+                    }
+                    free(errors);
+                    
+                    free_route_match(&match);
+                    return 0; // Constraint validation failed
+                }
+            }
+            
             // Store match result for parameter access
             layer->last_match = duplicate_route_match(&match);
             printf("[DEBUG] layer_match: advanced pattern matched with %d parameters\n", match.param_count);

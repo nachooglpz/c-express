@@ -16,4 +16,14 @@ $(TARGET): $(OBJ)
 clean:
 	rm -f $(OBJ) $(TARGET)
 
+# Test targets
+test_validation_simple: test_validation_simple.c $(filter-out main.o,$(OBJ))
+	$(CC) $(CFLAGS) -o $@ $^
+
+test_pattern: test_pattern.c $(filter-out main.o,$(OBJ))
+	$(CC) $(CFLAGS) -o $@ $^
+
+test_subrouters: test_subrouters.c $(filter-out main.o,$(OBJ))
+	$(CC) $(CFLAGS) -o $@ $^
+
 .PHONY: all clean
