@@ -2,6 +2,7 @@
 #define REQUEST_H
 
 #include <stddef.h>
+#include "json.h"
 
 #define MAX_HEADERS 32
 #define MAX_PARAMS 16
@@ -37,10 +38,24 @@ typedef struct Request {
     KeyValue query[MAX_QUERY_PARAMS];
     int query_count;
     
+    // JSON parsing support
+    JsonValue *parsed_json;
+    int json_parsed;
+    char *json_error;
+    
     // Helper functions
     const char* (*get_header)(Request *req, const char *key);
     const char* (*get_param)(Request *req, const char *key);
     const char* (*get_query)(Request *req, const char *key);
+    
+    // JSON helper functions
+    JsonValue* (*get_json)(Request *req);
+    const char* (*get_json_string)(Request *req, const char *key);
+    double (*get_json_number)(Request *req, const char *key);
+    int (*get_json_bool)(Request *req, const char *key);
+    JsonObject* (*get_json_object)(Request *req, const char *key);
+    JsonArray* (*get_json_array)(Request *req, const char *key);
+    int (*validate_json_schema)(Request *req, JsonSchema *schema);
 } Request;
 
 // Initialize request from raw HTTP data
@@ -57,5 +72,19 @@ void parse_query_string(const char *query_string, KeyValue *query_params, int *q
 
 // Helper function to parse HTTP headers
 void parse_headers(const char *raw_request, KeyValue *headers, int *header_count);
+
+// JSON request body functions
+JsonValue* request_get_json(Request *req);
+const char* request_get_json_string(Request *req, const char *key);
+double request_get_json_number(Request *req, const char *key);
+int request_get_json_bool(Request *req, const char *key);
+JsonObject* request_get_json_object(Request *req, const char *key);
+JsonArray* request_get_json_array(Request *req, const char *key);
+int request_validate_json_schema(Request *req, JsonSchema *schema);
+void request_free_json(Request *req);
+
+// Content type detection
+const char* request_get_content_type(Request *req);
+int request_is_json(Request *req);
 
 #endif

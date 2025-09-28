@@ -189,10 +189,22 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     req->param_count = 0;
     req->query_count = 0;
     
+    // Initialize JSON fields
+    req->parsed_json = NULL;
+    req->json_parsed = 0;
+    req->json_error = NULL;
+    
     // Set function pointers
     req->get_header = request_get_header;
     req->get_param = request_get_param;
     req->get_query = request_get_query;
+    req->get_json = request_get_json;
+    req->get_json_string = request_get_json_string;
+    req->get_json_number = request_get_json_number;
+    req->get_json_bool = request_get_json_bool;
+    req->get_json_object = request_get_json_object;
+    req->get_json_array = request_get_json_array;
+    req->validate_json_schema = request_validate_json_schema;
     
     // Parse the first line to get method and path
     char first_line[512];
@@ -263,4 +275,146 @@ void request_set_route_params(Request *req, void *match_ptr) {
     }
     
     printf("[DEBUG] request_set_route_params: set %d parameters\n", req->param_count);
+}
+
+// ============================================================================
+// JSON REQUEST BODY PARSING
+// ============================================================================
+
+// Get content type from request headers
+const char* request_get_content_type(Request *req) {
+    return request_get_header(req, "Content-Type");
+}
+
+// Check if request contains JSON content
+int request_is_json(Request *req) {
+    const char *content_type = request_get_content_type(req);
+    if (!content_type) return 0;
+    
+    return strstr(content_type, "application/json") != NULL;
+}
+
+// Parse JSON from request body (lazy parsing)
+JsonValue* request_get_json(Request *req) {
+    if (!req) return NULL;
+    
+    // Return cached result if already parsed
+    if (req->json_parsed) {
+        return req->parsed_json;
+    }
+    
+    // Mark as parsed to avoid re-parsing
+    req->json_parsed = 1;
+    
+    // Check if content type is JSON
+    if (!request_is_json(req)) {
+        req->json_error = strdup("Content-Type is not application/json");
+        return NULL;
+    }
+    
+    // Check if body is empty
+    if (!req->body[0]) {
+        req->json_error = strdup("Request body is empty");
+        return NULL;
+    }
+    
+    // Parse JSON
+    char *error_message = NULL;
+    req->parsed_json = json_parse_with_error(req->body, &error_message);
+    
+    if (error_message) {
+        req->json_error = error_message;
+        return NULL;
+    }
+    
+    printf("[DEBUG] request_get_json: successfully parsed JSON from request body\n");
+    return req->parsed_json;
+}
+
+// Get string value from JSON object in request
+const char* request_get_json_string(Request *req, const char *key) {
+    JsonValue *json = request_get_json(req);
+    if (!json || json->type != JSON_OBJECT || !key) return NULL;
+    
+    return json_object_get_string(json->data.object_value, key);
+}
+
+// Get number value from JSON object in request  
+double request_get_json_number(Request *req, const char *key) {
+    JsonValue *json = request_get_json(req);
+    if (!json || json->type != JSON_OBJECT || !key) return 0.0;
+    
+    return json_object_get_number(json->data.object_value, key);
+}
+
+// Get boolean value from JSON object in request
+int request_get_json_bool(Request *req, const char *key) {
+    JsonValue *json = request_get_json(req);
+    if (!json || json->type != JSON_OBJECT || !key) return 0;
+    
+    return json_object_get_bool(json->data.object_value, key);
+}
+
+// Get nested object from JSON object in request
+JsonObject* request_get_json_object(Request *req, const char *key) {
+    JsonValue *json = request_get_json(req);
+    if (!json || json->type != JSON_OBJECT || !key) return NULL;
+    
+    return json_object_get_object(json->data.object_value, key);
+}
+
+// Get array from JSON object in request
+JsonArray* request_get_json_array(Request *req, const char *key) {
+    JsonValue *json = request_get_json(req);
+    if (!json || json->type != JSON_OBJECT || !key) return NULL;
+    
+    return json_object_get_array(json->data.object_value, key);
+}
+
+// Validate JSON against schema
+int request_validate_json_schema(Request *req, JsonSchema *schema) {
+    JsonValue *json = request_get_json(req);
+    if (!json || !schema) return 0;
+    
+    JsonValidationResult *result = json_validate_schema(json, schema);
+    if (!result) return 0;
+    
+    int is_valid = result->is_valid;
+    
+    // Print validation errors for debugging
+    if (!is_valid) {
+        printf("[DEBUG] JSON validation failed for schema '%s':\n", 
+               schema->schema_name ? schema->schema_name : "unnamed");
+        for (int i = 0; i < result->error_count; i++) {
+            JsonValidationError *error = &result->errors[i];
+            printf("[DEBUG]   - %s: %s (expected %s, got %s)\n",
+                   error->field_path,
+                   error->error_message,
+                   json_type_name(error->expected_type),
+                   json_type_name(error->actual_type));
+        }
+    } else {
+        printf("[DEBUG] JSON validation passed for schema '%s'\n",
+               schema->schema_name ? schema->schema_name : "unnamed");
+    }
+    
+    json_free_validation_result(result);
+    return is_valid;
+}
+
+// Free JSON parsing resources
+void request_free_json(Request *req) {
+    if (!req) return;
+    
+    if (req->parsed_json) {
+        json_free_value(req->parsed_json);
+        req->parsed_json = NULL;
+    }
+    
+    if (req->json_error) {
+        free(req->json_error);
+        req->json_error = NULL;
+    }
+    
+    req->json_parsed = 0;
 }

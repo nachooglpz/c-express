@@ -46,7 +46,17 @@ void express_init(int client_fd, void (*next)(void *), void *context) {
     ctx->user_context = res;
     ctx->error_ctx = error_ctx;
     
+    printf("[DEBUG] express_init: initialized request context\n");
+    
     next(ctx);
+    
+    printf("[DEBUG] express_init: middleware chain completed\n");
+    
+    // Clean up JSON resources from request if they were used
+    if (ctx->req) {
+        request_free_json(ctx->req);
+        printf("[DEBUG] express_init: cleaned up JSON resources\n");
+    }
     
     // Check for unhandled errors after middleware chain
     if (error_context_has_error(error_ctx) && !error_ctx->current_error->is_handled) {
@@ -62,6 +72,7 @@ void express_init(int client_fd, void (*next)(void *), void *context) {
     
     destroy_error_context(error_ctx);
     free(res);
+    printf("[DEBUG] express_init: cleanup completed\n");
 }
 
 void app_get(App *app, const char *path, Handler handler) {

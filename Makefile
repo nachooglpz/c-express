@@ -1,8 +1,8 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -g
-SRC=main.c app.c router.c layer.c response.c request.c error.c route.c
+SRC=main.c app.c router.c layer.c response.c request.c error.c route.c json.c
 OBJ=$(SRC:.c=.o)
-DEPS=app.h router.h route.h layer.h response.h request.h error.h
+DEPS=app.h router.h route.h layer.h response.h request.h error.h json.h
 TARGET=c-server
 
 all: $(TARGET)
@@ -27,6 +27,12 @@ test_subrouters: test_subrouters.c $(filter-out main.o,$(OBJ))
 	$(CC) $(CFLAGS) -o $@ $^
 
 test_route_metadata: test_route_metadata.c $(filter-out main.o,$(OBJ))
+	$(CC) $(CFLAGS) -o $@ $^
+
+test_json_parsing: test_json_parsing.c $(filter-out main.o,$(OBJ))
+	$(CC) $(CFLAGS) -o $@ $^
+
+test_json_simple: test_json_simple.c json.o
 	$(CC) $(CFLAGS) -o $@ $^
 
 .PHONY: all clean
