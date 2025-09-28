@@ -1,0 +1,161 @@
+# C-Express Framework - Professional .gitignore
+# ==============================================
+
+# Build Artifacts
+# ---------------
+build/
+lib/
+dist/
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+
+# Compiled Binaries
+# -----------------
+c-express-server
+c-server
+test_*
+!test_*.c
+examples/*/demo-server
+examples/*/main
+examples/*/server
+
+# Debug and Profiling
+# -------------------
+*.dSYM/
+*.gdb_history
+*.pdb
+core
+core.*
+vgcore.*
+callgrind.out.*
+cachegrind.out.*
+massif.out.*
+*.gcov
+*.gcda
+*.gcno
+*.profraw
+
+# Coverage Reports
+# ----------------
+coverage/
+*.info
+lcov.info
+htmlcov/
+.coverage
+
+# Static Analysis
+# ---------------
+cppcheck-results.xml
+scan-build-*/
+.clang_complete
+compile_commands.json
+
+# IDEs and Editors
+# ----------------
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Vim/Neovim
+*.swp
+*.swo
+*~
+.netrwhist
+tags
+TAGS
+
+# Emacs
+*~
+\#*\#
+.\#*
+.emacs.desktop
+.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# CLion/IntelliJ
+.idea/
+cmake-build-*/
+.clion.source.upload.marker
+
+
+
+# Operating System Files
+# ----------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Linux
+.directory
+.Trash-*
+
+# Documentation Generation
+# ------------------------
+docs/html/
+docs/latex/
+docs/man/
+docs/rtf/
+docs/xml/
+*.aux
+*.log
+*.out
+*.toc
+*.pdf
+
+# Temporary and Backup Files
+# ---------------------------
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*~$*
+
+
+
+# Test Results and Logs
+# ---------------------
+test-results/
+*.log
+*.out
+valgrind-*.log
+sanitizer-*.log
+
+# Benchmarking Results
+# -------------------
+benchmark-results/
+*.bench
+perf.data*
+
+
+
+
+
+
+
+# Project-Specific Ignores
+# ------------------------
+# project-specific files to ignore here
