@@ -1,19 +1,20 @@
 #include "layer.h"
+#include "route.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 // Helper function to get next segment from a path
 const char* get_next_segment(const char *path, int *pos, char *buffer, int buffer_size) {
-    if (!path || *pos >= strlen(path)) return NULL;
+    if (!path || *pos >= (int)strlen(path)) return NULL;
     
     // Skip slashes
     while (path[*pos] == '/') (*pos)++;
-    if (*pos >= strlen(path)) return NULL;
+    if (*pos >= (int)strlen(path)) return NULL;
     
     int start = *pos;
     // Find end of segment
-    while (*pos < strlen(path) && path[*pos] != '/') (*pos)++;
+    while (*pos < (int)strlen(path) && path[*pos] != '/') (*pos)++;
     
     int length = *pos - start;
     if (length >= buffer_size) length = buffer_size - 1;
@@ -24,44 +25,58 @@ const char* get_next_segment(const char *path, int *pos, char *buffer, int buffe
     return buffer;
 }
 
-// Check if a path matches a pattern (supports :param syntax)
+// Legacy simple pattern matching (for backwards compatibility)
 int path_matches_pattern(const char *pattern, const char *path) {
     if (!pattern || !path) return 0;
     
     // Exact match for simple paths
-    if (strchr(pattern, ':') == NULL) {
+    if (strchr(pattern, ':') == NULL && strchr(pattern, '*') == NULL) {
         return strcmp(pattern, path) == 0;
     }
     
-    // Pattern matching for parameterized routes
-    int pattern_pos = 0, path_pos = 0;
-    char pattern_segment[64], path_segment[64];
+    // Use advanced pattern matching for complex patterns
+    RoutePattern *compiled = compile_route_pattern(pattern);
+    if (!compiled) return 0;
     
-    while (1) {
-        const char *p_seg = get_next_segment(pattern, &pattern_pos, pattern_segment, sizeof(pattern_segment));
-        const char *path_seg = get_next_segment(path, &path_pos, path_segment, sizeof(path_segment));
-        
-        // Both exhausted - perfect match
-        if (!p_seg && !path_seg) {
-            return 1;
-        }
-        
-        // One exhausted but not the other - no match
-        if (!p_seg || !path_seg) {
-            return 0;
-        }
-        
-        // Compare segments (parameter segments always match)
-        if (p_seg[0] != ':' && strcmp(p_seg, path_seg) != 0) {
-            return 0;
-        }
-    }
+    RouteMatch match = route_pattern_match(compiled, path);
+    int result = match.matched;
+    
+    free_route_match(&match);
+    free_route_pattern(compiled);
+    
+    return result;
+}
+
+// Get the last match result from a layer (for parameter access)
+void* layer_get_match_result(Layer *layer) {
+    return layer ? layer->last_match : NULL;
 }
 
 int layer_match(Layer *layer, const char *method, const char *path) {
-    if (strcmp(layer->method, "USE") == 0) {
+    // Clear previous match result
+    if (layer->last_match) {
+        free_route_match((RouteMatch*)layer->last_match);
+        free(layer->last_match);
+        layer->last_match = NULL;
+    }
+    
+    if (layer->method && strcmp(layer->method, "USE") == 0) {
         printf("[DEBUG] layer_match: middleware matched for method=%s, path=%s\n", method, path);
-        return 1; // always match for middleware
+        
+        // For middleware with patterns, still check the path
+        if (layer->pattern) {
+            RouteMatch match = route_pattern_match((RoutePattern*)layer->pattern, path);
+            if (match.matched) {
+                layer->last_match = duplicate_route_match(&match);
+                free_route_match(&match);
+                return 1;
+            } else {
+                free_route_match(&match);
+                return 0;
+            }
+        }
+        
+        return 1; // Always match for middleware without patterns
     }
 
     // Handle mounted routers
@@ -81,12 +96,31 @@ int layer_match(Layer *layer, const char *method, const char *path) {
     }
 
     // Handle regular handlers
-    int method_match = strcmp(layer->method, method) == 0;
-    int path_match = path_matches_pattern(layer->path, path);
+    int method_match = layer->method ? strcmp(layer->method, method) == 0 : 1;
+    int path_match = 0;
+    
+    if (layer->pattern) {
+        // Use advanced pattern matching
+        RouteMatch match = route_pattern_match((RoutePattern*)layer->pattern, path);
+        path_match = match.matched;
+        
+        if (path_match) {
+            // Store match result for parameter access
+            layer->last_match = duplicate_route_match(&match);
+            printf("[DEBUG] layer_match: advanced pattern matched with %d parameters\n", match.param_count);
+            free_route_match(&match);
+        } else {
+            free_route_match(&match);
+        }
+    } else if (layer->path) {
+        // Use legacy pattern matching
+        path_match = path_matches_pattern(layer->path, path);
+    }
+    
     int match = method_match && path_match;
     
     printf("[DEBUG] layer_match: route match=%d for method=%s, path=%s, layer_method=%s, layer_path=%s\n",
-           match, method, path, layer->method, layer->path);
+           match, method, path, layer->method ? layer->method : "NULL", layer->path ? layer->path : "NULL");
     
     return match;
 }

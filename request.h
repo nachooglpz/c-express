@@ -49,6 +49,9 @@ void request_init(Request *req, int client_fd, const char *raw_request);
 // Parse URL parameters based on route pattern
 void request_parse_params(Request *req, const char *route_pattern, const char *actual_path);
 
+// Set parameters from RouteMatch result (for advanced pattern matching)
+void request_set_route_params(Request *req, void *match);
+
 // Helper function to parse query string
 void parse_query_string(const char *query_string, KeyValue *query_params, int *query_count);
 

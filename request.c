@@ -1,4 +1,5 @@
 #include "request.h"
+#include "route.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -237,4 +238,29 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     
     printf("[DEBUG] request_init: method=%s, path=%s, query=%s\n", 
            req->method, req->path, req->query_string);
+}
+
+// Set parameters from RouteMatch result (for advanced pattern matching)
+void request_set_route_params(Request *req, void *match_ptr) {
+    RouteMatch *match = (RouteMatch*)match_ptr;
+    if (!req || !match) return;
+    
+    // Clear existing parameters
+    req->param_count = 0;
+    
+    // Copy parameters from match result
+    for (int i = 0; i < match->param_count && i < MAX_PARAMS; i++) {
+        strncpy(req->params[i].key, match->params[i].name, sizeof(req->params[i].key) - 1);
+        req->params[i].key[sizeof(req->params[i].key) - 1] = '\0';
+        
+        strncpy(req->params[i].value, match->params[i].value, sizeof(req->params[i].value) - 1);
+        req->params[i].value[sizeof(req->params[i].value) - 1] = '\0';
+        
+        req->param_count++;
+        
+        printf("[DEBUG] request_set_route_params: set param '%s' = '%s'\n", 
+               req->params[i].key, req->params[i].value);
+    }
+    
+    printf("[DEBUG] request_set_route_params: set %d parameters\n", req->param_count);
 }

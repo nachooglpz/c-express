@@ -2,6 +2,7 @@
 #include "layer.h"
 #include "response.h"
 #include "error.h"
+#include "route.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,11 +51,22 @@ void router_add_layer(Router *router, const char *method, const char *path, Hand
         router->capacity = new_capacity;
     }
 
-    router->layers[router->layer_count].method = method;
-    router->layers[router->layer_count].path = path;
-    router->layers[router->layer_count].type = LAYER_HANDLER;
-    router->layers[router->layer_count].data.handler = handler;
-    router->layers[router->layer_count].mount_prefix = NULL;
+    Layer *layer = &router->layers[router->layer_count];
+    layer->method = method;
+    layer->path = path;
+    layer->type = LAYER_HANDLER;
+    layer->data.handler = handler;
+    layer->mount_prefix = NULL;
+    layer->last_match = NULL;
+    
+    // Compile route pattern for advanced matching
+    if (path && (strchr(path, ':') || strchr(path, '*'))) {
+        layer->pattern = (void*)compile_route_pattern(path);
+        printf("[DEBUG] router_add_layer: compiled pattern for '%s'\n", path);
+    } else {
+        layer->pattern = NULL;
+    }
+    
     router->layer_count++;
 }
 
@@ -110,8 +122,13 @@ void next_handler(void *context) {
             
         } else {
             // Handle regular handler
-            // Parse URL parameters if this is a route (not middleware)
-            if (strcmp(layer->method, "USE") != 0) {
+            
+            // Extract parameters from advanced pattern matching
+            RouteMatch *route_match = (RouteMatch*)layer->last_match;
+            if (route_match && route_match->matched) {
+                request_set_route_params(ctx->req, route_match);
+            } else if (layer->method && strcmp(layer->method, "USE") != 0 && layer->path) {
+                // Fallback to legacy parameter parsing for simple patterns
                 request_parse_params(ctx->req, layer->path, ctx->req->path);
             }
             
