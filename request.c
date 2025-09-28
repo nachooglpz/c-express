@@ -194,6 +194,10 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     req->json_parsed = 0;
     req->json_error = NULL;
     
+    // Initialize form data fields
+    form_data_init(&req->form_data);
+    req->form_parsed = 0;
+    
     // Set function pointers
     req->get_header = request_get_header;
     req->get_param = request_get_param;
@@ -205,6 +209,13 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     req->get_json_object = request_get_json_object;
     req->get_json_array = request_get_json_array;
     req->validate_json_schema = request_validate_json_schema;
+    
+    // Set form data function pointers
+    req->get_form = request_get_form;
+    req->get_form_value = request_get_form_value;
+    req->get_form_field = request_get_form_field;
+    req->get_form_file = request_get_form_file;
+    req->has_form_field = request_has_form_field;
     
     // Parse the first line to get method and path
     char first_line[512];
@@ -238,14 +249,32 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     // Parse headers
     parse_headers(raw_request, req->headers, &req->header_count);
     
-    // Parse body (simplified - assumes body starts after empty line)
+    // Parse body (handle both \r\n\r\n and \n\n patterns)
+    printf("[DEBUG] Looking for body separator in raw_request (first 200 chars): %.200s\n", raw_request);
     const char *body_start = strstr(raw_request, "\r\n\r\n");
     if (body_start) {
-        body_start += 4;
-        strncpy(req->body, body_start, MAX_BODY_SIZE - 1);
-        req->body[MAX_BODY_SIZE - 1] = '\0';
+        body_start += 4; // Skip \r\n\r\n
+        printf("[DEBUG] Found \\r\\n\\r\\n separator\n");
+    } else {
+        body_start = strstr(raw_request, "\n\n");
+        if (body_start) {
+            body_start += 2; // Skip \n\n
+            printf("[DEBUG] Found \\n\\n separator\n");
+        } else {
+            printf("[DEBUG] No body separator found\n");
+        }
+    }
+    
+    if (body_start) {
+        size_t body_len = strlen(body_start);
+        size_t max_copy = (body_len < MAX_BODY_SIZE - 1) ? body_len : MAX_BODY_SIZE - 1;
+        strncpy(req->body, body_start, max_copy);
+        req->body[max_copy] = '\0';
+        printf("[DEBUG] Parsed body length: %zu (original: %zu)\n", strlen(req->body), body_len);
+        printf("[DEBUG] Body first 100 chars: %.100s\n", req->body);
     } else {
         req->body[0] = '\0';
+        printf("[DEBUG] No body found in request\n");
     }
     
     printf("[DEBUG] request_init: method=%s, path=%s, query=%s\n", 
@@ -417,4 +446,121 @@ void request_free_json(Request *req) {
     }
     
     req->json_parsed = 0;
+}
+
+// ============================================================================
+// FORM DATA REQUEST BODY PARSING
+// ============================================================================
+
+// Check if request contains form data
+int request_is_form_data(Request *req) {
+    const char *content_type = request_get_content_type(req);
+    if (!content_type) return 0;
+    
+    return strstr(content_type, "application/x-www-form-urlencoded") != NULL;
+}
+
+// Check if request contains multipart form data
+int request_is_multipart_form(Request *req) {
+    const char *content_type = request_get_content_type(req);
+    if (!content_type) return 0;
+    
+    return strstr(content_type, "multipart/form-data") != NULL;
+}
+
+// Parse form data from request body (lazy parsing)
+FormData* request_get_form(Request *req) {
+    if (!req) return NULL;
+    
+    // Return cached result if already parsed
+    if (req->form_parsed) {
+        return &req->form_data;
+    }
+    
+    // Mark as parsed to avoid re-parsing
+    req->form_parsed = 1;
+    
+    printf("[DEBUG] Parsing form data from request body\n");
+    
+    // Check if body is empty
+    if (!req->body[0]) {
+        req->form_data.error_message = strdup("Request body is empty");
+        return NULL;
+    }
+    
+    // Parse based on content type
+    if (request_is_multipart_form(req)) {
+        // Parse multipart form data
+        const char *content_type = request_get_content_type(req);
+        char *boundary = extract_multipart_boundary(content_type);
+        
+        if (!boundary) {
+            req->form_data.error_message = strdup("Could not extract multipart boundary");
+            return NULL;
+        }
+        
+        printf("[DEBUG] Parsing multipart form data with boundary: %s\n", boundary);
+        
+        int success = parse_multipart_form(&req->form_data, req->body, boundary);
+        free(boundary);
+        
+        if (!success) {
+            return NULL;
+        }
+    } else if (request_is_form_data(req)) {
+        // Parse URL-encoded form data
+        printf("[DEBUG] Parsing URL-encoded form data\n");
+        
+        int success = parse_url_encoded_form(&req->form_data, req->body);
+        if (!success) {
+            req->form_data.error_message = strdup("Failed to parse URL-encoded form data");
+            return NULL;
+        }
+    } else {
+        req->form_data.error_message = strdup("Content-Type is not a supported form data type");
+        return NULL;
+    }
+    
+    printf("[DEBUG] Successfully parsed form data with %d fields\n", req->form_data.field_count);
+    return &req->form_data;
+}
+
+// Get form field value by name
+const char* request_get_form_value(Request *req, const char *name) {
+    FormData *form = request_get_form(req);
+    if (!form) return NULL;
+    
+    return form_data_get_value(form, name);
+}
+
+// Get form field by name
+FormField* request_get_form_field(Request *req, const char *name) {
+    FormData *form = request_get_form(req);
+    if (!form) return NULL;
+    
+    return form_data_get_field(form, name);
+}
+
+// Get form file field by name
+FormField* request_get_form_file(Request *req, const char *name) {
+    FormData *form = request_get_form(req);
+    if (!form) return NULL;
+    
+    return form_data_get_file(form, name);
+}
+
+// Check if form field exists
+int request_has_form_field(Request *req, const char *name) {
+    FormData *form = request_get_form(req);
+    if (!form) return 0;
+    
+    return form_data_has_field(form, name);
+}
+
+// Free form data parsing resources
+void request_free_form(Request *req) {
+    if (!req) return;
+    
+    form_data_cleanup(&req->form_data);
+    req->form_parsed = 0;
 }

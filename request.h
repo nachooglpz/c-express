@@ -3,13 +3,14 @@
 
 #include <stddef.h>
 #include "json.h"
+#include "form.h"
 
 #define MAX_HEADERS 32
 #define MAX_PARAMS 16
 #define MAX_QUERY_PARAMS 16
 #define MAX_HEADER_SIZE 256
 #define MAX_PARAM_SIZE 128
-#define MAX_BODY_SIZE 4096
+#define MAX_BODY_SIZE 16384
 
 typedef struct {
     char key[MAX_PARAM_SIZE];
@@ -43,6 +44,10 @@ typedef struct Request {
     int json_parsed;
     char *json_error;
     
+    // Form data parsing support
+    FormData form_data;
+    int form_parsed;
+    
     // Helper functions
     const char* (*get_header)(Request *req, const char *key);
     const char* (*get_param)(Request *req, const char *key);
@@ -56,6 +61,13 @@ typedef struct Request {
     JsonObject* (*get_json_object)(Request *req, const char *key);
     JsonArray* (*get_json_array)(Request *req, const char *key);
     int (*validate_json_schema)(Request *req, JsonSchema *schema);
+    
+    // Form data helper functions
+    FormData* (*get_form)(Request *req);
+    const char* (*get_form_value)(Request *req, const char *name);
+    FormField* (*get_form_field)(Request *req, const char *name);
+    FormField* (*get_form_file)(Request *req, const char *name);
+    int (*has_form_field)(Request *req, const char *name);
 } Request;
 
 // Initialize request from raw HTTP data
@@ -86,5 +98,15 @@ void request_free_json(Request *req);
 // Content type detection
 const char* request_get_content_type(Request *req);
 int request_is_json(Request *req);
+
+// Form data request body functions
+FormData* request_get_form(Request *req);
+const char* request_get_form_value(Request *req, const char *name);
+FormField* request_get_form_field(Request *req, const char *name);
+FormField* request_get_form_file(Request *req, const char *name);
+int request_has_form_field(Request *req, const char *name);
+int request_is_form_data(Request *req);
+int request_is_multipart_form(Request *req);
+void request_free_form(Request *req);
 
 #endif

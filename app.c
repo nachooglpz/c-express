@@ -55,7 +55,8 @@ void express_init(int client_fd, void (*next)(void *), void *context) {
     // Clean up JSON resources from request if they were used
     if (ctx->req) {
         request_free_json(ctx->req);
-        printf("[DEBUG] express_init: cleaned up JSON resources\n");
+        request_free_form(ctx->req);
+        printf("[DEBUG] express_init: cleaned up JSON and form data resources\n");
     }
     
     // Check for unhandled errors after middleware chain
@@ -150,9 +151,52 @@ void app_listen(App *app, int port) {
         }
         printf("[DEBUG] app_listen: accepted client_fd=%d\n", client_fd);
 
-        char buffer[1024] = {0};
-        read(client_fd, buffer, sizeof(buffer) -1);
-        printf("[DEBUG] app_listen: received request: %s\n", buffer);
+        char buffer[16384] = {0}; // Buffer for complete HTTP request
+        ssize_t total_read = 0;
+        ssize_t bytes_read;
+        
+        // First, read until we get headers (up to \r\n\r\n)
+        while (total_read < sizeof(buffer) - 1) {
+            bytes_read = read(client_fd, buffer + total_read, 1);
+            if (bytes_read <= 0) break;
+            
+            total_read += bytes_read;
+            buffer[total_read] = '\0';
+            
+            // Check if we have complete headers
+            if (strstr(buffer, "\r\n\r\n")) {
+                break;
+            }
+        }
+        
+        // Now check if there's a Content-Length and read the body
+        const char *content_length_header = strstr(buffer, "Content-Length: ");
+        if (content_length_header) {
+            int content_length = atoi(content_length_header + 16);
+            printf("[DEBUG] Found Content-Length: %d\n", content_length);
+            
+            // Find where body should start
+            const char *body_start_marker = strstr(buffer, "\r\n\r\n");
+            if (body_start_marker) {
+                size_t headers_length = (body_start_marker + 4) - buffer;
+                ssize_t body_already_read = total_read - headers_length;
+                ssize_t body_remaining = content_length - body_already_read;
+                
+                printf("[DEBUG] Headers length: %zu, body already read: %zd, remaining: %zd\n", 
+                       headers_length, body_already_read, body_remaining);
+                
+                // Read remaining body if needed
+                if (body_remaining > 0 && (total_read + body_remaining) < sizeof(buffer) - 1) {
+                    ssize_t additional = read(client_fd, buffer + total_read, body_remaining);
+                    if (additional > 0) {
+                        total_read += additional;
+                        buffer[total_read] = '\0';
+                    }
+                }
+            }
+        }
+        
+        printf("[DEBUG] app_listen: received request (%zd bytes): %.500s\n", total_read, buffer);
 
         // Create and initialize request object
         Request *req = malloc(sizeof(Request));
