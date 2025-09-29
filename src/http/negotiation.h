@@ -75,6 +75,12 @@ int accepts_html(Request *req);
 int accepts_xml(Request *req);
 int accepts_text(Request *req);
 
+// High-level API - simple content negotiation for common use cases
+const char* get_preferred_content_type(Request *req, const char **available_types, int count);
+
+// Convenience function with common web content types
+const char* get_preferred_web_content_type(Request *req);
+
 // Enhanced response methods with content negotiation
 void response_negotiate_and_send(Response *res, Request *req, 
                                 const char *json_data, const char *html_data, 

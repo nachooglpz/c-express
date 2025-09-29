@@ -93,36 +93,6 @@ const char* users_csv = "ID,Name,Email,Role\n"
 "1,\"John Doe\",john@example.com,admin\n"
 "2,\"Jane Smith\",jane@example.com,user\n";
 
-// Simple content type detection from Accept header
-const char* get_preferred_content_type(const char* accept_header) {
-    if (!accept_header) {
-        return "application/json";  // default
-    }
-    
-    printf("[DEBUG] Content Negotiation - Accept header: %s\n", accept_header);
-    
-    // Check for specific types with quality value awareness
-    if (strstr(accept_header, "application/json")) {
-        return "application/json";
-    } else if (strstr(accept_header, "text/html")) {
-        return "text/html";
-    } else if (strstr(accept_header, "application/xml")) {
-        return "application/xml";
-    } else if (strstr(accept_header, "text/plain")) {
-        return "text/plain";
-    } else if (strstr(accept_header, "text/csv")) {
-        return "text/csv";
-    } else if (strstr(accept_header, "text/*")) {
-        return "text/html";  // prefer HTML for text wildcards
-    } else if (strstr(accept_header, "application/*")) {
-        return "application/json";  // prefer JSON for application wildcards
-    } else if (strstr(accept_header, "*/*")) {
-        return "application/json";  // prefer JSON for general wildcards
-    }
-    
-    return "application/json";  // fallback
-}
-
 // Main content negotiation handler - supports multiple formats
 void content_negotiation_handler(int client_fd, void (*next)(void *), void *context) {
     (void)next;
@@ -134,9 +104,13 @@ void content_negotiation_handler(int client_fd, void (*next)(void *), void *cont
     
     printf("\n[DEBUG] === Content Negotiation Handler ===\n");
     
-    // Get the Accept header
+    // Get the Accept header for logging
     const char *accept_header = req->get_header(req, "Accept");
-    const char *content_type = get_preferred_content_type(accept_header);
+    printf("[DEBUG] Content Negotiation - Accept header: %s\n", 
+           accept_header ? accept_header : "(none)");
+    
+    // Use the simple high-level API from negotiation module
+    const char *content_type = get_preferred_web_content_type(req);
     
     printf("[DEBUG] Negotiated content type: %s\n", content_type);
     
@@ -217,7 +191,7 @@ void accept_analysis_handler(int client_fd, void (*next)(void *), void *context)
         accepts_any ? "true" : "false",
         accepts_text_wildcard ? "true" : "false",
         accepts_app_wildcard ? "true" : "false",
-        get_preferred_content_type(accept_header)
+        get_preferred_web_content_type(req)
     );
     
     response_set_header(res, "Content-Type", "application/json");

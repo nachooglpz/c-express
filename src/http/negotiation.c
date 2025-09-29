@@ -426,6 +426,42 @@ void print_content_negotiation(ContentNegotiation *negotiation) {
     }
 }
 
+// High-level API - simple content negotiation for common use cases
+const char* get_preferred_content_type(Request *req, const char **available_types, int count) {
+    if (!req || !available_types || count == 0) {
+        return "application/json";  // Default fallback
+    }
+    
+    // Parse Accept header using negotiation module
+    ContentNegotiation *negotiation = parse_accept_header(req);
+    if (!negotiation) {
+        return "application/json";  // fallback
+    }
+    
+    // Negotiate best content type
+    const char *chosen_type = negotiate_content_type(negotiation, available_types, count);
+    
+    // Clean up
+    free(negotiation);
+    
+    return chosen_type ? chosen_type : "application/json";
+}
+
+// Convenience function with common web content types
+const char* get_preferred_web_content_type(Request *req) {
+    // Common web content types in priority order
+    static const char *common_types[] = {
+        "application/json",
+        "text/html",
+        "application/xml", 
+        "text/plain",
+        "text/csv"
+    };
+    static const int common_count = sizeof(common_types) / sizeof(common_types[0]);
+    
+    return get_preferred_content_type(req, common_types, common_count);
+}
+
 const char* content_type_to_string(ContentType type) {
     if (type >= 0 && (size_t)type < (size_t)content_formats_count) {
         return content_formats[type].description;

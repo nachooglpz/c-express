@@ -5,6 +5,7 @@
 #include "../http/request.h"
 #include "../http/response.h"
 #include "../http/error.h"
+#include "../http/negotiation.h"
 
 // Forward declaration
 typedef struct App App;
