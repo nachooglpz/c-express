@@ -269,10 +269,8 @@ void app_listen(App *app, int port) {
         // Handle the request
         app_handle_request(app, req->method, req->path, client_fd, req);
         
-        // Cleanup
-        if (req->stream) {
-            request_free_stream(req);
-        }
+        // Comprehensive cleanup - free all allocated memory in request
+        request_destroy(req);
         free(req);
         close(client_fd);
     }

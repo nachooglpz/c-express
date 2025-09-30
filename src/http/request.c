@@ -663,3 +663,20 @@ void request_free_stream(Request *req) {
     req->body_streamed = 0;
     req->body_complete = 0;
 }
+
+// Comprehensive cleanup function that properly frees all allocated memory
+void request_destroy(Request *req) {
+    if (!req) return;
+    
+    // Free JSON-related allocations
+    request_free_json(req);
+    
+    // Free form-related allocations  
+    request_free_form(req);
+    
+    // Free streaming-related allocations
+    request_free_stream(req);
+    
+    // Note: The Request struct itself should be freed by the caller
+    // since it might be stack-allocated or part of a larger structure
+}

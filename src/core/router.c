@@ -33,6 +33,12 @@ Router *create_router() {
 void destroy_router(Router *router) {
     if (router) {
         if (router->layers) {
+            // Free mount_prefix strings for mounted routers
+            for (int i = 0; i < router->layer_count; i++) {
+                if (router->layers[i].mount_prefix) {
+                    free((char*)router->layers[i].mount_prefix);
+                }
+            }
             free(router->layers);
         }
         free(router);

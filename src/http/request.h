@@ -141,4 +141,7 @@ int request_is_form_data(struct Request *req);
 int request_is_multipart_form(struct Request *req);
 void request_free_form(struct Request *req);
 
+// Comprehensive cleanup function
+void request_destroy(struct Request *req);
+
 #endif
