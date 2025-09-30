@@ -1,6 +1,6 @@
 # C-Express Test Suite
 
-This directory contains comprehensive tests for the C-Express web framework. The tests serve as both validation and examples of how to use the framework.
+The `test/` directory contains comprehensive tests for the C-Express web framework. The tests serve as both validation and examples of how to use the framework.
 
 ## Quick Start
 
