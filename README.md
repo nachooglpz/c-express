@@ -167,6 +167,7 @@ make lint            # Lint code
 - [✓] Routing and middleware system
 - [✓] JSON and form parsing
 - [✓] Content Negotiation and request streaming
+- [✓] Memory Audit
 - [ ] Node.js native addon bindings
 - [ ] NPM package publication
 - [ ] Performance benchmarks
