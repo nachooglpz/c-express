@@ -1,14 +1,57 @@
-# C Express
+# C-Express Web Framework
 
-A high-performance Express.js-like web framework implemented in C with Node.js bindings.
+A fast, lightweight HTTP web framework for C with Express.js-inspired API design.
 
 ## Features
 
-- 🚀 **High Performance**: Written in C for maximum speed
-- 🔧 **Middleware Support**: Composable request/response handling
-- 🛣️ **Advanced Routing**: Pattern matching, parameters, subrouters
-- 📝 **Body Parsing**: JSON and form data parsing built-in
-- 🧪 **Well Tested**: Comprehensive unit and integration tests
+✓ **Request Streaming** - Handle large uploads efficiently with automatic detection  
+✓ **Route Patterns** - Advanced pattern matching with parameters and constraints  
+✓ **JSON/Form Parsing** - Built-in parsing with schema validation  
+✓ **Content Negotiation** - HTTP content negotiation support  
+✓ **Middleware System** - Express-style middleware with error handling  
+✓ **Memory Safe** - AddressSanitizer and memory leak detection
+
+## Quick Start
+
+### 1. Clone and Build
+
+```bash
+git clone <repository-url>
+cd c-express
+make clean && make all
+```
+
+### 2. Run Tests
+
+```bash
+# Simple pattern test
+make test-minimal_pattern
+
+# Start a full server example
+make test-streaming 
+```
+
+### 3. Test Runner (Recommended)
+
+```bash
+./run_test.sh help     # Show all available tests
+./run_test.sh pattern  # Run pattern test
+./run_test.sh streaming # Start streaming server
+```
+
+## Available Tests
+
+### Unit Tests
+- `make test-minimal_pattern` - Route pattern matching
+- `make test-response_api` - Response API functionality
+
+### Server Examples  
+- `make test-streaming` - Request streaming
+- `make test-validation_simple` - Route validation
+- `make test-json_parsing` - JSON parsing
+- `make test-form_data` - Form handling
+
+See [`tests/README.md`](tests/README.md) for complete test documentation.
 
 ## Installation
 
@@ -46,6 +89,7 @@ int main() {
     app.listen(&app, 3000);
     return 0;
 }
+```
 
 ### Node.js Usage (Future)
 
@@ -122,6 +166,7 @@ make lint            # Lint code
 - [✓] Core HTTP server functionality
 - [✓] Routing and middleware system
 - [✓] JSON and form parsing
+- [✓] Content Negotiation and request streaming
 - [ ] Node.js native addon bindings
 - [ ] NPM package publication
 - [ ] Performance benchmarks

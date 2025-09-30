@@ -120,6 +120,21 @@ test: $(TEST_BIN)
 $(BUILDDIR)/tests/%: $(TESTDIR)/%.c $(STATIC_LIB) | $(BUILDDIR)/tests
 	@echo "Compiling test $@..."
 	$(CC) $(CFLAGS) -o $@ $< -L$(LIBDIR) -lc-express $(LDFLAGS)
+
+# Run individual test by name (e.g., make run-test-streaming)
+run-test-%: $(BUILDDIR)/tests/test_%
+	@echo "Running test $*..."
+	@./$(BUILDDIR)/tests/test_$*
+
+# Quick test runner (e.g., make test-streaming)  
+test-%: $(BUILDDIR)/tests/test_%
+	@echo "Running test $*..."
+	@if ./$(BUILDDIR)/tests/test_$*; then \
+		echo "✓ test_$* PASSED"; \
+	else \
+		echo "✗ test_$* FAILED"; \
+		exit 1; \
+	fi
 # Coverage Report (requires gcov)
 coverage: clean
 	@echo "Building with coverage instrumentation..."
@@ -187,6 +202,12 @@ distclean: clean
 $(BUILDDIR) $(BUILDDIR)/core $(BUILDDIR)/http $(BUILDDIR)/parsers $(BUILDDIR)/tests $(BUILDDIR)/examples:
 	@mkdir -p $@
 $(LIBDIR) $(DISTDIR):
+	@mkdir -p $@
+
+# Ensure directories exist before building
+$(LIB_OBJ): | $(BUILDDIR) $(BUILDDIR)/core $(BUILDDIR)/http $(BUILDDIR)/parsers
+$(STATIC_LIB): | $(LIBDIR)
+$(TEST_BIN): | $(BUILDDIR)/tests
 # Help
 help:
 	@echo "C-Express Build System"
