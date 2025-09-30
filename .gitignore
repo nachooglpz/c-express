@@ -159,3 +159,4 @@ perf.data*
 # Project-Specific Ignores
 # ------------------------
 # project-specific files to ignore here
+!test_setup.sh
