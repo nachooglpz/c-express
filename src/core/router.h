@@ -5,7 +5,7 @@
 #include "../http/request.h"
 #include "../http/error.h"
 
-typedef struct Router {
+struct Router {
     Layer *layers;
     int layer_count;
     int capacity;
@@ -17,15 +17,17 @@ typedef struct Router {
     void (*delete)(struct Router *, const char *path, Handler handler);
     void (*patch)(struct Router *, const char *path, Handler handler);
     void (*options)(struct Router *, const char *path, Handler handler);
-    void (*use)(Router *router, const char *path, Handler handler);
-} Router;
+    void (*use)(struct Router *router, const char *path, Handler handler);
+};
+
+typedef struct Router Router;
 
 // Forward declaration for App
 struct App;
 
 // context for next middleware
 typedef struct {
-    Router *router;
+    struct Router *router;
     struct App *app;     // Reference to the app for error handling
     int *matches;
     int match_count;
@@ -37,20 +39,20 @@ typedef struct {
 } NextContext;
 
 // Router functions
-Router *create_router();
-void destroy_router(Router *router);
-void router_add_layer(Router *router, const char *method, const char *path, Handler handler);
-void router_handle(Router *router, const char *method, const char *path, int client_fd, Request *req);
-void router_use(Router *router, const char *path, Handler handler);
-void router_mount(Router *parent, const char *prefix, Router *child);
+struct Router *create_router();
+void destroy_router(struct Router *router);
+void router_add_layer(struct Router *router, const char *method, const char *path, Handler handler);
+void router_handle(struct Router *router, const char *method, const char *path, int client_fd, Request *req);
+void router_use(struct Router *router, const char *path, Handler handler);
+void router_mount(struct Router *parent, const char *prefix, struct Router *child);
 void next_handler(void *context);
 
 // Router method implementations
-void router_get(Router *router, const char *path, Handler handler);
-void router_post(Router *router, const char *path, Handler handler);
-void router_put(Router *router, const char *path, Handler handler);
-void router_delete(Router *router, const char *path, Handler handler);
-void router_patch(Router *router, const char *path, Handler handler);
-void router_options(Router *router, const char *path, Handler handler);
+void router_get(struct Router *router, const char *path, Handler handler);
+void router_post(struct Router *router, const char *path, Handler handler);
+void router_put(struct Router *router, const char *path, Handler handler);
+void router_delete(struct Router *router, const char *path, Handler handler);
+void router_patch(struct Router *router, const char *path, Handler handler);
+void router_options(struct Router *router, const char *path, Handler handler);
 
 #endif

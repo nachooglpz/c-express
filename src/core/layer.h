@@ -6,7 +6,7 @@
 typedef void (*Handler)(int client_fd, void (*next)(void *), void *context);
 
 // Forward declarations
-typedef struct Router Router;
+struct Router;
 
 typedef enum {
     LAYER_HANDLER,    // Regular handler
@@ -19,7 +19,7 @@ typedef struct {
     LayerType type;
     union {
         Handler handler;      // For LAYER_HANDLER
-        Router *router;       // For LAYER_ROUTER  
+        struct Router *router;       // For LAYER_ROUTER  
     } data;
     const char *mount_prefix; // For mounted routers
     void *pattern;            // Compiled pattern for advanced matching (RoutePattern*)

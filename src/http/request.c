@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "request.h"
 #include "../core/route.h"
 #include <string.h>
@@ -133,15 +134,15 @@ void parse_headers(const char *raw_request, KeyValue *headers, int *header_count
 
 // Helper function to get next segment from a path (same as in layer.c)
 static const char* get_next_segment_req(const char *path, int *pos, char *buffer, int buffer_size) {
-    if (!path || *pos >= strlen(path)) return NULL;
+    if (!path || (size_t)*pos >= strlen(path)) return NULL;
     
     // Skip slashes
     while (path[*pos] == '/') (*pos)++;
-    if (*pos >= strlen(path)) return NULL;
+    if ((size_t)*pos >= strlen(path)) return NULL;
     
     int start = *pos;
     // Find end of segment
-    while (*pos < strlen(path) && path[*pos] != '/') (*pos)++;
+    while ((size_t)*pos < strlen(path) && path[*pos] != '/') (*pos)++;
     
     int length = *pos - start;
     if (length >= buffer_size) length = buffer_size - 1;
@@ -198,6 +199,11 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     form_data_init(&req->form_data);
     req->form_parsed = 0;
     
+    // Initialize streaming fields
+    req->stream = NULL;
+    req->body_streamed = 0;
+    req->body_complete = 0;
+    
     // Set function pointers
     req->get_header = request_get_header;
     req->get_param = request_get_param;
@@ -217,6 +223,15 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     req->get_form_file = request_get_form_file;
     req->has_form_field = request_has_form_field;
     
+    // Set streaming function pointers
+    req->is_body_streamed = request_is_body_streamed;
+    req->is_streaming_complete = request_is_streaming_complete;
+    req->get_stream = request_get_stream;
+    req->get_body_content = request_get_body_content;
+    req->get_temp_file = request_get_temp_file;
+    req->save_body_to_file = request_save_body_to_file;
+    req->get_body_size = request_get_body_size;
+    
     // Parse the first line to get method and path
     char first_line[512];
     const char *line_end = strchr(raw_request, '\r');
@@ -224,7 +239,7 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     if (!line_end) return;
     
     int line_len = line_end - raw_request;
-    if (line_len >= sizeof(first_line)) line_len = sizeof(first_line) - 1;
+    if ((size_t)line_len >= sizeof(first_line)) line_len = sizeof(first_line) - 1;
     strncpy(first_line, raw_request, line_len);
     first_line[line_len] = '\0';
     
@@ -304,6 +319,33 @@ void request_set_route_params(Request *req, void *match_ptr) {
     }
     
     printf("[DEBUG] request_set_route_params: set %d parameters\n", req->param_count);
+}
+
+// Initialize request with streaming support (headers already parsed)
+void request_init_streaming(Request *req, int client_fd, const char *headers_only) {
+    // First initialize normally but with empty body
+    char empty_request[4096];
+    snprintf(empty_request, sizeof(empty_request), "%s\r\n\r\n", headers_only);
+    request_init(req, client_fd, empty_request);
+    
+    // Clear the body since we'll handle it via streaming
+    req->body[0] = '\0';
+    
+    // Get content length and transfer encoding headers
+    const char *content_length = req->get_header(req, "Content-Length");
+    const char *transfer_encoding = req->get_header(req, "Transfer-Encoding");
+    
+    // Create stream context
+    req->stream = stream_create(client_fd, content_length, transfer_encoding);
+    if (req->stream) {
+        req->body_streamed = 1;
+        req->body_complete = 0;
+        printf("[DEBUG] request_init_streaming: Created stream context\n");
+    } else {
+        printf("[DEBUG] request_init_streaming: Failed to create stream context\n");
+        req->body_streamed = 0;
+        req->body_complete = 1;
+    }
 }
 
 // ============================================================================
@@ -563,4 +605,61 @@ void request_free_form(Request *req) {
     
     form_data_cleanup(&req->form_data);
     req->form_parsed = 0;
+}
+
+// Streaming request body functions
+int request_is_body_streamed(Request *req) {
+    return req ? req->body_streamed : 0;
+}
+
+int request_is_streaming_complete(Request *req) {
+    if (!req || !req->stream) return 1;
+    return stream_is_complete(req->stream);
+}
+
+StreamContext* request_get_stream(Request *req) {
+    return req ? req->stream : NULL;
+}
+
+const char* request_get_body_content(Request *req) {
+    if (!req || !req->stream) {
+        // Fallback to legacy body for backward compatibility
+        return req ? req->body : NULL;
+    }
+    
+    if (req->body_streamed) {
+        return stream_get_memory_content(req->stream);
+    }
+    
+    return req->body;
+}
+
+const char* request_get_temp_file(Request *req) {
+    if (!req || !req->stream) return NULL;
+    return stream_get_temp_file(req->stream);
+}
+
+int request_save_body_to_file(Request *req, const char *filename) {
+    if (!req || !req->stream) return -1;
+    return stream_save_to_file(req->stream, filename);
+}
+
+size_t request_get_body_size(Request *req) {
+    if (!req) return 0;
+    
+    if (req->stream) {
+        return stream_get_content_length(req->stream);
+    }
+    
+    // Fallback to legacy body
+    return strlen(req->body);
+}
+
+void request_free_stream(Request *req) {
+    if (!req || !req->stream) return;
+    
+    stream_destroy(req->stream);
+    req->stream = NULL;
+    req->body_streamed = 0;
+    req->body_complete = 0;
 }

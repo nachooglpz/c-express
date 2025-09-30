@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "router.h"
 #include "layer.h"
 #include "../http/response.h"

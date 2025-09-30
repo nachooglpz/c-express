@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "json.h"
 #include <ctype.h>
 #include <errno.h>
@@ -50,6 +51,7 @@ static char* parse_string(JsonParser *parser) {
     }
     
     size_t start = parser->position;
+    (void)start; // Suppress unused variable warning
     size_t str_length = 0;
     
     // First pass: calculate length and validate

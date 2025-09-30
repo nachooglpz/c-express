@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "app.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,7 @@
 
 // Default error handler
 void default_error_handler(Error *error, int client_fd, void *context) {
+    (void)context; // Suppress unused parameter warning
     Response *res = create_response(client_fd);
     
     // Set appropriate status code
@@ -48,14 +50,38 @@ void express_init(int client_fd, void (*next)(void *), void *context) {
     
     printf("[DEBUG] express_init: initialized request context\n");
     
+    // Check if request is using streaming
+    if (ctx->req && ctx->req->is_body_streamed && ctx->req->is_body_streamed(ctx->req)) {
+        printf("[DEBUG] express_init: request is using streaming mode\n");
+        
+        StreamContext *stream = ctx->req->get_stream(ctx->req);
+        if (stream) {
+            printf("[DEBUG] express_init: stream context available, bytes read: %zu\n", 
+                   stream_get_content_length(stream));
+            
+            if (stream_has_error(stream)) {
+                printf("[DEBUG] express_init: stream has error: %s\n", stream_get_error(stream));
+            }
+        }
+    } else {
+        printf("[DEBUG] express_init: request is using legacy mode\n");
+    }
+    
     next(ctx);
     
     printf("[DEBUG] express_init: middleware chain completed\n");
     
-    // Clean up JSON resources from request if they were used
+    // Clean up JSON and form resources from request if they were used
     if (ctx->req) {
         request_free_json(ctx->req);
         request_free_form(ctx->req);
+        
+        // Clean up streaming resources
+        if (ctx->req->stream) {
+            printf("[DEBUG] express_init: cleaning up streaming resources\n");
+            request_free_stream(ctx->req);
+        }
+        
         printf("[DEBUG] express_init: cleaned up JSON and form data resources\n");
     }
     
@@ -151,59 +177,102 @@ void app_listen(App *app, int port) {
         }
         printf("[DEBUG] app_listen: accepted client_fd=%d\n", client_fd);
 
-        char buffer[16384] = {0}; // Buffer for complete HTTP request
-        ssize_t total_read = 0;
+        char headers_buffer[8192] = {0}; // Buffer for HTTP headers only
+        ssize_t headers_read = 0;
         ssize_t bytes_read;
+        int headers_complete = 0;
         
-        // First, read until we get headers (up to \r\n\r\n)
-        while (total_read < sizeof(buffer) - 1) {
-            bytes_read = read(client_fd, buffer + total_read, 1);
+        // First, read only the headers (up to \r\n\r\n)
+        while (headers_read < (ssize_t)(sizeof(headers_buffer) - 1) && !headers_complete) {
+            bytes_read = read(client_fd, headers_buffer + headers_read, 1);
             if (bytes_read <= 0) break;
             
-            total_read += bytes_read;
-            buffer[total_read] = '\0';
+            headers_read += bytes_read;
+            headers_buffer[headers_read] = '\0';
             
             // Check if we have complete headers
-            if (strstr(buffer, "\r\n\r\n")) {
+            if (strstr(headers_buffer, "\r\n\r\n")) {
+                headers_complete = 1;
                 break;
             }
         }
         
-        // Now check if there's a Content-Length and read the body
-        const char *content_length_header = strstr(buffer, "Content-Length: ");
-        if (content_length_header) {
-            int content_length = atoi(content_length_header + 16);
-            printf("[DEBUG] Found Content-Length: %d\n", content_length);
+        if (!headers_complete) {
+            printf("[DEBUG] app_listen: incomplete headers received\n");
+            close(client_fd);
+            continue;
+        }
+        
+        printf("[DEBUG] app_listen: received headers (%zd bytes): %.500s\n", headers_read, headers_buffer);
+        
+        // Parse headers to determine if we need streaming
+        const char *content_length_header = strstr(headers_buffer, "Content-Length: ");
+        const char *transfer_encoding_header = strstr(headers_buffer, "Transfer-Encoding: ");
+        
+        int use_streaming = 0;
+        int content_length = 0;
+        
+        // Determine if we should use streaming
+        if (transfer_encoding_header && strstr(transfer_encoding_header, "chunked")) {
+            use_streaming = 1;
+            printf("[DEBUG] app_listen: chunked encoding detected, using streaming\n");
+        } else if (content_length_header) {
+            content_length = atoi(content_length_header + 16);
+            printf("[DEBUG] app_listen: Content-Length: %d\n", content_length);
             
-            // Find where body should start
-            const char *body_start_marker = strstr(buffer, "\r\n\r\n");
-            if (body_start_marker) {
-                size_t headers_length = (body_start_marker + 4) - buffer;
-                ssize_t body_already_read = total_read - headers_length;
-                ssize_t body_remaining = content_length - body_already_read;
-                
-                printf("[DEBUG] Headers length: %zu, body already read: %zd, remaining: %zd\n", 
-                       headers_length, body_already_read, body_remaining);
-                
-                // Read remaining body if needed
-                if (body_remaining > 0 && (total_read + body_remaining) < sizeof(buffer) - 1) {
-                    ssize_t additional = read(client_fd, buffer + total_read, body_remaining);
-                    if (additional > 0) {
-                        total_read += additional;
-                        buffer[total_read] = '\0';
-                    }
-                }
+            if (content_length > MAX_BODY_SIZE) {
+                use_streaming = 1;
+                printf("[DEBUG] app_listen: large body detected (%d bytes), using streaming\n", content_length);
             }
         }
         
-        printf("[DEBUG] app_listen: received request (%zd bytes): %.500s\n", total_read, buffer);
-
         // Create and initialize request object
         Request *req = malloc(sizeof(Request));
-        request_init(req, client_fd, buffer);
+        
+        if (use_streaming) {
+            // Use streaming initialization
+            printf("[DEBUG] app_listen: initializing request with streaming\n");
+            request_init_streaming(req, client_fd, headers_buffer);
+            
+            // Stream context is set up and ready for on-demand reading
+            if (req->stream && !stream_has_error(req->stream)) {
+                printf("[DEBUG] app_listen: streaming context ready for on-demand reading\n");
+                // Don't read data automatically - let the application decide when to stream
+                req->body_complete = 0; // Mark as not complete since we haven't read it yet
+            } else if (req->stream) {
+                printf("[DEBUG] app_listen: streaming setup failed: %s\n", stream_get_error(req->stream));
+            }
+        } else {
+            // Use legacy initialization for small bodies
+            printf("[DEBUG] app_listen: using legacy body handling\n");
+            
+            char complete_request[16384] = {0};
+            size_t total_size = headers_read;
+            
+            // Copy headers to complete request buffer
+            memcpy(complete_request, headers_buffer, headers_read);
+            
+            // Read body if there's a content length
+            if (content_length > 0 && content_length < (int)(sizeof(complete_request) - headers_read - 1)) {
+                ssize_t body_read = read(client_fd, complete_request + headers_read, content_length);
+                if (body_read > 0) {
+                    total_size += body_read;
+                    complete_request[total_size] = '\0';
+                    printf("[DEBUG] app_listen: read body (%zd bytes) for legacy processing\n", body_read);
+                }
+            }
+            
+            printf("[DEBUG] app_listen: complete request (%zu bytes): %.500s\n", total_size, complete_request);
+            request_init(req, client_fd, complete_request);
+        }
 
+        // Handle the request
         app_handle_request(app, req->method, req->path, client_fd, req);
         
+        // Cleanup
+        if (req->stream) {
+            request_free_stream(req);
+        }
         free(req);
         close(client_fd);
     }

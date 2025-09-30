@@ -87,8 +87,12 @@ $(BUILDDIR)/core/%.o: $(CORE_SRCDIR)/%.c | $(BUILDDIR)/core
 	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 # Object Files - HTTP
 $(BUILDDIR)/http/%.o: $(HTTP_SRCDIR)/%.c | $(BUILDDIR)/http
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 # Object Files - Parsers
 $(BUILDDIR)/parsers/%.o: $(PARSERS_SRCDIR)/%.c | $(BUILDDIR)/parsers
+	@echo "Compiling $<..."
+	$(CC) $(CFLAGS) -fPIC -c $< -o $@
 # Test Targets
 test: $(TEST_BIN)
 	@echo "Running test suite..."
