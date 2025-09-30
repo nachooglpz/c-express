@@ -1,8 +1,10 @@
+#define _GNU_SOURCE
 #include "../src/core/app.h"
 #include "../src/core/route.h"
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <stdlib.h>
 
 // Custom validator for username
 int username_validator(const char *value, void *context, ValidationError *error) {

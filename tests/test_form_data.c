@@ -265,13 +265,13 @@ int main() {
     app.post(&app, "/detect", content_type_test_handler);
     
     printf("\n=== Form Data Features ===\n");
-    printf("✓ URL-encoded form parsing (application/x-www-form-urlencoded)\n");
-    printf("✓ Multipart form parsing (multipart/form-data)\n");
-    printf("✓ File upload support with metadata\n");
-    printf("✓ Form field access by name\n");
-    printf("✓ Content-Type detection and validation\n");
-    printf("✓ Memory-safe form parsing and cleanup\n");
-    printf("✓ Support for text fields and file fields\n");
+    printf("- URL-encoded form parsing (application/x-www-form-urlencoded)\n");
+    printf("- Multipart form parsing (multipart/form-data)\n");
+    printf("- File upload support with metadata\n");
+    printf("- Form field access by name\n");
+    printf("- Content-Type detection and validation\n");
+    printf("- Memory-safe form parsing and cleanup\n");
+    printf("- Support for text fields and file fields\n");
     
     printf("\n=== Testing Instructions ===\n");
     printf("Starting server on port 3000...\n\n");

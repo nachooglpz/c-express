@@ -17,7 +17,7 @@ void small_upload_handler(int client_fd, void (*next)(void *), void *context) {
     char response_body[1024];
     
     if (req->is_body_streamed && req->is_body_streamed(req)) {
-        printf("[TEST] ✅ Streaming mode detected\n");
+        printf("[TEST] Streaming mode detected\n");
         StreamContext *stream = req->get_stream(req);
         if (stream) {
             printf("[TEST] Mode: %s, Length: %zu, Chunked: %s\n",
@@ -34,7 +34,7 @@ void small_upload_handler(int client_fd, void (*next)(void *), void *context) {
                 "{\"test\":\"small\",\"error\":\"no_stream_context\"}");
         }
     } else {
-        printf("[TEST] ✅ Legacy mode (expected for small uploads)\n");
+        printf("[TEST] Legacy mode (expected for small uploads)\n");
         printf("[TEST] Body: %.50s\n", req->body);
         
         snprintf(response_body, sizeof(response_body),
@@ -59,7 +59,7 @@ void large_upload_handler(int client_fd, void (*next)(void *), void *context) {
     char response_body[1024];
     
     if (req->is_body_streamed && req->is_body_streamed(req)) {
-        printf("[TEST] ✅ Streaming mode (expected for large uploads)\n");
+        printf("[TEST] Streaming mode (expected for large uploads)\n");
         StreamContext *stream = req->get_stream(req);
         if (stream) {
             printf("[TEST] Mode: %s, Length: %zu, Temp file: %s\n",
@@ -77,7 +77,7 @@ void large_upload_handler(int client_fd, void (*next)(void *), void *context) {
                 "{\"test\":\"large\",\"error\":\"no_stream_context\"}");
         }
     } else {
-        printf("[TEST] ⚠️ Legacy mode (unexpected for large uploads)\n");
+        printf("[TEST] Legacy mode (unexpected for large uploads)\n");
         snprintf(response_body, sizeof(response_body),
             "{\"test\":\"large\",\"mode\":\"legacy\",\"warning\":\"large_upload_in_legacy_mode\"}");
     }
@@ -99,7 +99,7 @@ void chunked_upload_handler(int client_fd, void (*next)(void *), void *context) 
     char response_body[1024];
     
     if (req->is_body_streamed && req->is_body_streamed(req)) {
-        printf("[TEST] ✅ Streaming mode (expected for chunked)\n");
+        printf("[TEST] Streaming mode (expected for chunked)\n");
         StreamContext *stream = req->get_stream(req);
         if (stream) {
             printf("[TEST] Is chunked: %s, Bytes read: %zu\n",
@@ -115,7 +115,7 @@ void chunked_upload_handler(int client_fd, void (*next)(void *), void *context) 
                 "{\"test\":\"chunked\",\"error\":\"no_stream_context\"}");
         }
     } else {
-        printf("[TEST] ⚠️ Legacy mode (unexpected for chunked)\n");
+        printf("[TEST] Legacy mode (unexpected for chunked)\n");
         snprintf(response_body, sizeof(response_body),
             "{\"test\":\"chunked\",\"mode\":\"legacy\",\"warning\":\"chunked_in_legacy_mode\"}");
     }
@@ -155,7 +155,7 @@ void info_handler(int client_fd, void (*next)(void *), void *context) {
 
 int main() {
     printf("================================================================\n");
-    printf("🧪 C-Express Streaming Framework - Test Suite\n");
+    printf("C-Express Streaming Framework - Test Suite\n");
     printf("================================================================\n\n");
     
     App app = create_app();
@@ -165,15 +165,15 @@ int main() {
     app.post(&app, "/test/large", large_upload_handler);
     app.post(&app, "/test/chunked", chunked_upload_handler);
     
-    printf("🚀 Test endpoints:\n");
-    printf("   GET  /info\n");
-    printf("   POST /test/small\n");
-    printf("   POST /test/large\n");
-    printf("   POST /test/chunked\n\n");
+    printf("Test endpoints:\n");
+    printf("GET  /info\n");
+    printf("POST /test/small\n");
+    printf("POST /test/large\n");
+    printf("POST /test/chunked\n\n");
     
-    printf("🌐 Starting on port 8080...\n");
+    printf("Starting on port 3000...\n");
     printf("================================================================\n\n");
     
-    app.listen(&app, 8080);
+    app.listen(&app, 3000);
     return 0;
 }

@@ -356,14 +356,14 @@ int main() {
     app.get(&app, "/api/versioned", api_versioned_handler);
     
     printf("\n=== Content Negotiation Features ===\n");
-    printf("✓ Accept header parsing and content type selection\n");
-    printf("✓ Multiple format support (JSON, HTML, XML, Text, CSV)\n");
-    printf("✓ Wildcard matching (*/*, text/*, application/*)\n");
-    printf("✓ Quality value awareness (q= parameters)\n");
-    printf("✓ Content type rejection (406 Not Acceptable)\n");
-    printf("✓ API versioning with vendor MIME types\n");
-    printf("✓ Detailed debug logging for negotiation process\n");
-    printf("✓ Custom response headers for client guidance\n\n");
+    printf("- Accept header parsing and content type selection\n");
+    printf("- Multiple format support (JSON, HTML, XML, Text, CSV)\n");
+    printf("- Wildcard matching (*/*, text/*, application/*)\n");
+    printf("- Quality value awareness (q= parameters)\n");
+    printf("- Content type rejection (406 Not Acceptable)\n");
+    printf("- API versioning with vendor MIME types\n");
+    printf("- Detailed debug logging for negotiation process\n");
+    printf("- Custom response headers for client guidance\n\n");
     
     printf("=== Test Commands ===\n");
     printf("Server will start on http://localhost:3000\n\n");
