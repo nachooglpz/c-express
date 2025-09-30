@@ -18,7 +18,8 @@ This will build the library and show you available tests.
 These tests can be run independently and don't start servers:
 
 - `make test-minimal_pattern` - Route pattern compilation and matching
-- `make test-json_simple` - JSON parser functionality (has known memory leaks to fix)
+- `make test-json_simple` - JSON parser functionality 
+- `make test-json_memory` - Complex JSON parsing with memory management
 - `make test-response_api` - Response API functionality
 
 ### Integration Tests (Server Examples)
@@ -107,8 +108,8 @@ make test-minimal_pattern  # Test a simple unit test
 
 ## Known Issues
 
-- `test_json_simple` has memory leaks in the JSON parser (to be fixed)
 - Some Makefile warnings about duplicate targets (cosmetic issue)
+- All major memory leaks have been fixed ✅
 
 ## Contributing
 

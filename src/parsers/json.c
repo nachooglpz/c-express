@@ -356,7 +356,10 @@ static JsonValue* parse_value(JsonParser *parser) {
     if (c == '"') {
         // String
         char *str = parse_string(parser);
-        return str ? json_create_string(str) : NULL;
+        if (!str) return NULL;
+        JsonValue *value = json_create_string(str);
+        free(str); // Free the original string since json_create_string uses strdup
+        return value;
     } else if (c == '{') {
         // Object
         JsonObject *obj = parse_object(parser);

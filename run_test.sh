@@ -14,7 +14,7 @@ show_help() {
     echo "Unit Tests (standalone):"
     echo "  pattern       - Route pattern compilation and matching"
     echo "  response      - Response API functionality"
-    echo "  json          - JSON parser (has memory leaks)"
+    echo "  json          - JSON parser"
     echo
     echo "Server Tests (start HTTP servers):"
     echo "  streaming     - Request streaming and large body handling (port 8080)"
@@ -51,7 +51,7 @@ run_test() {
             make test-response_api
             ;;
         json)
-            echo "Running JSON parser test (has known memory leaks)..."
+            echo "Running JSON parser test..."
             make test-json_simple
             ;;
         streaming)
