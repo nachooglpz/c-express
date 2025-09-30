@@ -20,7 +20,22 @@ These tests can be run independently and don't start servers:
 - `make test-minimal_pattern` - Route pattern compilation and matching
 - `make test-json_simple` - JSON parser functionality 
 - `make test-json_memory` - Complex JSON parsing with memory management
+- `make test-request_memory` - Request memory management and cleanup
+- `make test-response_memory` - Response module memory management  
+- `make test-modules_memory` - Streaming, Router, and Error module memory management
+- `make test-error_memory` - Error handling memory management
 - `make test-response_api` - Response API functionality
+
+### Memory Safety Tests
+These tests validate proper memory management across the framework:
+
+- `make test-request_memory` - Validates request JSON/form error handling cleanup
+- `make test-modules_memory` - Tests streaming, router mounting, and error context memory
+- `make test-json_memory` - Complex nested JSON parsing without leaks
+- `make test-response_memory` - Response create/destroy cycle validation
+- `make test-error_memory` - Error and ErrorContext memory management
+
+All memory tests use AddressSanitizer to detect leaks and run automatically in CI.
 
 ### Integration Tests (Server Examples)
 These tests start HTTP servers and serve as practical examples:
@@ -50,8 +65,20 @@ make test-streaming
 
 ### All Tests
 ```bash
+# Run all unit tests (safe, no servers)
+make test-unit
+
+# Run all memory tests 
+make test-memory
+
 # Run all tests (note: server tests will hang until interrupted)
 make test
+```
+
+### Memory Audit
+```bash
+# Run comprehensive memory leak audit
+./memory_audit.sh
 ```
 
 ### Building Tests Only
@@ -109,7 +136,16 @@ make test-minimal_pattern  # Test a simple unit test
 ## Known Issues
 
 - Some Makefile warnings about duplicate targets (cosmetic issue)
-- All major memory leaks have been fixed ✅
+- All major memory leaks have been fixed
+- Memory audit confirms zero leaks in critical request/response cycles
+
+## Memory Safety
+
+The framework has comprehensive memory leak detection:
+- AddressSanitizer integration for all tests
+- Automated memory audit script (`./memory_audit.sh`)
+- Comprehensive request cleanup via `request_destroy()`
+- Validated streaming, routing, and error handling memory management
 
 ## Contributing
 

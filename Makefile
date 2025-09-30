@@ -135,6 +135,27 @@ test-%: $(BUILDDIR)/tests/test_%
 		echo "✗ test_$* FAILED"; \
 		exit 1; \
 	fi
+
+# Test groups for convenience
+.PHONY: test-unit test-memory test-servers
+
+# Run all unit tests (safe, no servers started)
+test-unit: test-minimal_pattern test-json_simple
+	@echo "✓ All unit tests completed"
+
+# Run all memory management tests  
+test-memory: test-request_memory test-modules_memory test-json_memory test-response_memory test-error_memory
+	@echo "✓ All memory tests completed"
+
+# Run server integration tests (will hang until interrupted)
+test-servers: test-streaming test-json_parsing test-form_data test-patterns test-content_negotiation test-route_metadata test-subrouter
+	@echo "✓ All server tests completed"
+
+# Memory audit using the audit script
+.PHONY: audit-memory
+audit-memory:
+	@echo "Running comprehensive memory audit..."
+	@./memory_audit.sh
 # Coverage Report (requires gcov)
 coverage: clean
 	@echo "Building with coverage instrumentation..."

@@ -22,11 +22,11 @@ int main() {
     
     JsonValue *value = json_parse(complex_json);
     if (!value) {
-        printf("❌ Failed to parse complex JSON\n");
+        printf("Failed to parse complex JSON\n");
         return 1;
     }
     
-    printf("✅ Successfully parsed complex JSON\n");
+    printf("Successfully parsed complex JSON\n");
     printf("Type: %s\n", json_type_name(value->type));
     
     if (value->type == JSON_OBJECT) {
@@ -48,7 +48,7 @@ int main() {
     
     // Free the JSON value (this will test our memory management)
     json_free_value(value);
-    printf("✅ JSON memory freed successfully\n");
+    printf("JSON memory freed successfully\n");
     
     // Test multiple parse/free cycles
     printf("\nTesting multiple parse/free cycles...\n");
@@ -56,9 +56,9 @@ int main() {
         JsonValue *test_value = json_parse(complex_json);
         if (test_value) {
             json_free_value(test_value);
-            printf("Cycle %d: ✅\n", i + 1);
+            printf("Cycle %d: [OK]\n", i + 1);
         } else {
-            printf("Cycle %d: ❌\n", i + 1);
+            printf("Cycle %d: [FAIL]\n", i + 1);
             return 1;
         }
     }

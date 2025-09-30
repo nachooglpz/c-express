@@ -15,6 +15,16 @@ show_help() {
     echo "  pattern       - Route pattern compilation and matching"
     echo "  response      - Response API functionality"
     echo "  json          - JSON parser"
+    echo "  request-mem   - Request memory management"
+    echo "  modules-mem   - Streaming/Router/Error memory management"
+    echo "  json-mem      - Complex JSON memory management"
+    echo "  response-mem  - Response memory management"
+    echo "  error-mem     - Error handling memory management"
+    echo
+    echo "Test Groups:"
+    echo "  unit          - Run all unit tests"
+    echo "  memory        - Run all memory tests"
+    echo "  audit         - Run comprehensive memory audit"
     echo
     echo "Server Tests (start HTTP servers):"
     echo "  streaming     - Request streaming and large body handling (port 8080)"
@@ -53,6 +63,38 @@ run_test() {
         json)
             echo "Running JSON parser test..."
             make test-json_simple
+            ;;
+        request-mem)
+            echo "Running request memory management test..."
+            make test-request_memory
+            ;;
+        modules-mem)
+            echo "Running modules memory management test..."
+            make test-modules_memory
+            ;;
+        json-mem)
+            echo "Running JSON memory management test..."
+            make test-json_memory
+            ;;
+        response-mem)
+            echo "Running response memory management test..."
+            make test-response_memory
+            ;;
+        error-mem)
+            echo "Running error memory management test..."
+            make test-error_memory
+            ;;
+        unit)
+            echo "Running all unit tests..."
+            make test-unit
+            ;;
+        memory)
+            echo "Running all memory tests..."
+            make test-memory
+            ;;
+        audit)
+            echo "Running comprehensive memory audit..."
+            ./memory_audit.sh
             ;;
         streaming)
             echo "Starting streaming test server on port 3000..."
