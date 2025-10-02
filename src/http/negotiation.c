@@ -1,5 +1,7 @@
 #include "negotiation.h"
+#include "../debug.h"
 #include <stdio.h>
+#include "../debug.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
@@ -79,7 +81,7 @@ static void parse_media_type(const char *media_type_str, AcceptType *accept_type
         accept_type->wildcard_sub = 1;
     }
     
-    printf("[DEBUG] Parsed media type: %s (q=%.2f, main=%s, sub=%s)\n",
+    DEBUG_PRINT("Parsed media type: %s (q=%.2f, main=%s, sub=%s)\n",
            accept_type->media_type, accept_type->quality, 
            accept_type->main_type, accept_type->subtype);
 }
@@ -116,11 +118,11 @@ ContentNegotiation* parse_accept_header(Request *req) {
         // Default to accepting everything
         parse_media_type("*/*", &negotiation->accept_types[0]);
         negotiation->accept_count = 1;
-        printf("[DEBUG] No Accept header, defaulting to */*\n");
+        DEBUG_PRINT_STR("No Accept header, defaulting to */*\n");
         return negotiation;
     }
     
-    printf("[DEBUG] Parsing Accept header: %s\n", accept_header);
+    DEBUG_PRINT("Parsing Accept header: %s\n", accept_header);
     
     // Parse comma-separated media types
     char buffer[1024];
@@ -166,13 +168,13 @@ const char* negotiate_content_type(ContentNegotiation *negotiation,
         return "text/plain";  // Default fallback
     }
     
-    printf("[DEBUG] Negotiating content type from %d available types\n", count);
+    DEBUG_PRINT("Negotiating content type from %d available types\n", count);
     
     // Try each accept type in order (already sorted by quality)
     for (int i = 0; i < negotiation->accept_count; i++) {
         AcceptType *accept = &negotiation->accept_types[i];
         
-        printf("[DEBUG] Checking accept type: %s (q=%.2f)\n", 
+        DEBUG_PRINT("Checking accept type: %s (q=%.2f)\n", 
                accept->media_type, accept->quality);
         
         // Check against available types
@@ -181,14 +183,14 @@ const char* negotiate_content_type(ContentNegotiation *negotiation,
             
             // Exact match
             if (strcmp(accept->media_type, available) == 0) {
-                printf("[DEBUG] Exact match found: %s\n", available);
+                DEBUG_PRINT("Exact match found: %s\n", available);
                 return available;
             }
             
             // Wildcard matching
             if (accept->wildcard_main && accept->wildcard_sub) {
                 // */* matches everything
-                printf("[DEBUG] Wildcard match (*/*): %s\n", available);
+                DEBUG_PRINT("Wildcard match (*/*): %s\n", available);
                 return available;
             }
             
@@ -198,7 +200,7 @@ const char* negotiate_content_type(ContentNegotiation *negotiation,
                 if (accept->wildcard_sub && 
                     strcmp(accept->main_type, main_type) == 0) {
                     // text/* matches text/html, text/plain, etc.
-                    printf("[DEBUG] Subtype wildcard match (%s/*): %s\n", 
+                    DEBUG_PRINT("Subtype wildcard match (%s/*): %s\n", 
                            main_type, available);
                     return available;
                 }
@@ -208,12 +210,12 @@ const char* negotiate_content_type(ContentNegotiation *negotiation,
     
     // No match found, return first available type or default
     if (count > 0) {
-        printf("[DEBUG] No negotiated match, using first available: %s\n", 
+        DEBUG_PRINT("No negotiated match, using first available: %s\n", 
                available_types[0]);
         return available_types[0];
     }
     
-    printf("[DEBUG] No types available, using default: text/plain\n");
+    DEBUG_PRINT_STR("No types available, using default: text/plain\n");
     return "text/plain";
 }
 
@@ -338,7 +340,7 @@ void response_negotiate_and_send(Response *res, Request *req,
     // Negotiate the best content type
     const char *best_type = negotiate_content_type(negotiation, available_types, available_count);
     
-    printf("[DEBUG] Negotiated content type: %s\n", best_type);
+    DEBUG_PRINT("Negotiated content type: %s\n", best_type);
     
     // Send appropriate content
     res->set_header(res, "Content-Type", best_type);
@@ -400,29 +402,30 @@ void free_content_negotiation(ContentNegotiation *negotiation) {
 
 void print_content_negotiation(ContentNegotiation *negotiation) {
     if (!negotiation) {
-        printf("[DEBUG] Content negotiation: NULL\n");
+        DEBUG_PRINT_STR("Content negotiation: NULL\n");
         return;
     }
     
-    printf("[DEBUG] Content Negotiation Summary:\n");
-    printf("[DEBUG]   Accept types (%d):\n", negotiation->accept_count);
+    DEBUG_PRINT_STR("Content Negotiation Summary:\n");
+    DEBUG_PRINT("  Accept types (%d):\n", negotiation->accept_count);
     
     for (int i = 0; i < negotiation->accept_count; i++) {
         AcceptType *accept = &negotiation->accept_types[i];
-        printf("[DEBUG]     %d. %s (q=%.2f) %s%s\n", 
+        (void)accept; // Mark as potentially unused when DEBUG is disabled
+        DEBUG_PRINT("    %d. %s (q=%.2f) %s%s\n", 
                i + 1, accept->media_type, accept->quality,
                accept->wildcard_main ? "[main wildcard] " : "",
                accept->wildcard_sub ? "[sub wildcard]" : "");
     }
     
     if (negotiation->preferred_language[0]) {
-        printf("[DEBUG]   Preferred language: %s\n", negotiation->preferred_language);
+        DEBUG_PRINT("  Preferred language: %s\n", negotiation->preferred_language);
     }
     if (negotiation->preferred_encoding[0]) {
-        printf("[DEBUG]   Preferred encoding: %s\n", negotiation->preferred_encoding);
+        DEBUG_PRINT("  Preferred encoding: %s\n", negotiation->preferred_encoding);
     }
     if (negotiation->preferred_charset[0]) {
-        printf("[DEBUG]   Preferred charset: %s\n", negotiation->preferred_charset);
+        DEBUG_PRINT("  Preferred charset: %s\n", negotiation->preferred_charset);
     }
 }
 

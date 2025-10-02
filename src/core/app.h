@@ -64,6 +64,7 @@ void app_patch_with_metadata(struct App *app, const char *path, Handler handler,
 void app_options_with_metadata(struct App *app, const char *path, Handler handler, const RouteConfig *config);
 
 // Documentation and introspection functions
+char* app_get_routes_string(struct App *app);  // Returns allocated string - caller must free
 void app_print_routes(struct App *app);
 char* app_generate_openapi_doc(struct App *app);
 Route** app_get_routes_by_tag(struct App *app, const char *tag, int *count);

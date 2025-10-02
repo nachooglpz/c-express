@@ -1,4 +1,5 @@
 #include "error.h"
+#include "../debug.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -45,8 +46,8 @@ Error *create_error(ErrorCode code, const char *message, const char *file, int l
     snprintf(error->stack_trace, sizeof(error->stack_trace),
         "Error occurred in %s() at %s:%d\n", function, file, line);
     
-    printf("[ERROR] %s (%d): %s\n", error_get_status_text(code), error->status_code, error->message);
-    printf("[ERROR] Stack trace: %s", error->stack_trace);
+    ERROR_PRINT("%s (%d): %s\n", error_get_status_text(code), error->status_code, error->message);
+    ERROR_PRINT("Stack trace: %s", error->stack_trace);
     
     return error;
 }

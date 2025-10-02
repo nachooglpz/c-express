@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "router.h"
+#include "../debug.h"
 #include "layer.h"
 #include "../http/response.h"
 #include "../http/error.h"
@@ -26,7 +27,7 @@ Router *create_router() {
     router->options = router_options;
     router->use = router_use;
     
-    printf("[DEBUG] create_router: new router created\n");
+    DEBUG_PRINT_STR("create_router: new router created\n");
     return router;
 }
 
@@ -42,7 +43,7 @@ void destroy_router(Router *router) {
             free(router->layers);
         }
         free(router);
-        printf("[DEBUG] destroy_router: router destroyed\n");
+        DEBUG_PRINT_STR("destroy_router: router destroyed\n");
     }
 }
 
@@ -69,7 +70,7 @@ void router_add_layer(Router *router, const char *method, const char *path, Hand
     // Compile route pattern for advanced matching
     if (path && (strchr(path, ':') || strchr(path, '*'))) {
         layer->pattern = (void*)compile_route_pattern(path);
-        printf("[DEBUG] router_add_layer: compiled pattern for '%s'\n", path);
+        DEBUG_PRINT("router_add_layer: compiled pattern for '%s'\n", path);
     } else {
         layer->pattern = NULL;
     }
@@ -97,19 +98,19 @@ void router_mount(Router *parent, const char *prefix, Router *child) {
     layer->mount_prefix = strdup(prefix);  // Store a copy of the prefix
     parent->layer_count++;
     
-    printf("[DEBUG] router_mount: mounted router at prefix=%s\n", prefix);
+    DEBUG_PRINT("router_mount: mounted router at prefix=%s\n", prefix);
 }
 
 void next_handler(void *context) {
     NextContext *ctx = (NextContext *)context;
-    printf("[DEBUG] next_handler: idx=%d, match_count=%d\n", ctx->idx, ctx->match_count);
+    DEBUG_PRINT("next_handler: idx=%d, match_count=%d\n", ctx->idx, ctx->match_count);
     if (ctx->idx < ctx->match_count) {
         int layer_idx = ctx->matches[ctx->idx++];
         Layer *layer = &ctx->router->layers[layer_idx];
         
         if (layer->type == LAYER_ROUTER) {
             // Handle mounted router
-            printf("[DEBUG] next_handler: routing to mounted router at prefix=%s\n", layer->mount_prefix);
+            DEBUG_PRINT("next_handler: routing to mounted router at prefix=%s\n", layer->mount_prefix);
             
             // Strip the mount prefix from the path
             const char *sub_path = ctx->req->path;
@@ -122,7 +123,7 @@ void next_handler(void *context) {
                 }
             }
             
-            printf("[DEBUG] next_handler: sub_path=%s for mounted router\n", sub_path);
+            DEBUG_PRINT("next_handler: sub_path=%s for mounted router\n", sub_path);
             
             // Route to the mounted router with the stripped path
             router_handle(layer->data.router, ctx->req->method, sub_path, ctx->client_fd, ctx->req);
@@ -139,16 +140,16 @@ void next_handler(void *context) {
                 request_parse_params(ctx->req, layer->path, ctx->req->path);
             }
             
-            printf("[DEBUG] next_handler: calling handler for layer_idx=%d\n", layer_idx);
+            DEBUG_PRINT("next_handler: calling handler for layer_idx=%d\n", layer_idx);
             layer->data.handler(ctx->client_fd, next_handler, ctx);
         }
     } else {
-        printf("[DEBUG] next_handler: end of chain\n");
+        DEBUG_PRINT_STR("next_handler: end of chain\n");
     }
 }
 
 void router_handle(Router *router, const char *method, const char *path, int client_fd, Request *req) {
-    printf("[DEBUG] router_handle: method=%s, path=%s\n", method, path);
+    DEBUG_PRINT("router_handle: method=%s, path=%s\n", method, path);
     int *matches = malloc(router->layer_count * sizeof(int));
     int match_count = 0;
     int route_match_count = 0;  // Count only non-middleware matches
@@ -162,7 +163,7 @@ void router_handle(Router *router, const char *method, const char *path, int cli
             }
         }
     }
-    printf("[DEBUG] router_handle: match_count=%d, route_match_count=%d\n", match_count, route_match_count);
+    DEBUG_PRINT("router_handle: match_count=%d, route_match_count=%d\n", match_count, route_match_count);
 
     NextContext ctx = { router, NULL, matches, match_count, client_fd, 0, req, &route_match_count, NULL };
 

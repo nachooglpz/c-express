@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "app.h"
+#include "../debug.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,28 +49,28 @@ void express_init(int client_fd, void (*next)(void *), void *context) {
     ctx->user_context = res;
     ctx->error_ctx = error_ctx;
     
-    printf("[DEBUG] express_init: initialized request context\n");
+    DEBUG_PRINT_STR("express_init: initialized request context\n");
     
     // Check if request is using streaming
     if (ctx->req && ctx->req->is_body_streamed && ctx->req->is_body_streamed(ctx->req)) {
-        printf("[DEBUG] express_init: request is using streaming mode\n");
+        DEBUG_PRINT_STR("express_init: request is using streaming mode\n");
         
         StreamContext *stream = ctx->req->get_stream(ctx->req);
         if (stream) {
-            printf("[DEBUG] express_init: stream context available, bytes read: %zu\n", 
+            DEBUG_PRINT("express_init: stream context available, bytes read: %zu\n", 
                    stream_get_content_length(stream));
             
             if (stream_has_error(stream)) {
-                printf("[DEBUG] express_init: stream has error: %s\n", stream_get_error(stream));
+                DEBUG_PRINT("express_init: stream has error: %s\n", stream_get_error(stream));
             }
         }
     } else {
-        printf("[DEBUG] express_init: request is using legacy mode\n");
+        DEBUG_PRINT_STR("express_init: request is using legacy mode\n");
     }
     
     next(ctx);
     
-    printf("[DEBUG] express_init: middleware chain completed\n");
+    DEBUG_PRINT_STR("express_init: middleware chain completed\n");
     
     // Clean up JSON and form resources from request if they were used
     if (ctx->req) {
@@ -78,16 +79,16 @@ void express_init(int client_fd, void (*next)(void *), void *context) {
         
         // Clean up streaming resources
         if (ctx->req->stream) {
-            printf("[DEBUG] express_init: cleaning up streaming resources\n");
+            DEBUG_PRINT_STR("express_init: cleaning up streaming resources\n");
             request_free_stream(ctx->req);
         }
         
-        printf("[DEBUG] express_init: cleaned up JSON and form data resources\n");
+        DEBUG_PRINT_STR("express_init: cleaned up JSON and form data resources\n");
     }
     
     // Check for unhandled errors after middleware chain
     if (error_context_has_error(error_ctx) && !error_ctx->current_error->is_handled) {
-        printf("[ERROR] Unhandled error caught: %s\n", error_ctx->current_error->message);
+        ERROR_PRINT("Unhandled error caught: %s\n", error_ctx->current_error->message);
         
         // Use custom error handler if available
         if (ctx->app && ctx->app->error_handler) {
@@ -99,51 +100,51 @@ void express_init(int client_fd, void (*next)(void *), void *context) {
     
     destroy_error_context(error_ctx);
     free(res);
-    printf("[DEBUG] express_init: cleanup completed\n");
+    DEBUG_PRINT_STR("express_init: cleanup completed\n");
 }
 
 void app_get(App *app, const char *path, Handler handler) {
-    printf("[DEBUG] app_get: path=%s\n", path);
+    DEBUG_PRINT("app_get: path=%s\n", path);
     router_add_layer(&app->router, "GET", path, handler);
 }
 
 void app_post(App *app, const char *path, Handler handler) {
-    printf("[DEBUG] app_post: path=%s\n", path);
+    DEBUG_PRINT("app_post: path=%s\n", path);
     router_add_layer(&app->router, "POST", path, handler);
 }
 
 void app_put(App *app, const char *path, Handler handler) {
-    printf("[DEBUG] app_put: path=%s\n", path);
+    DEBUG_PRINT("app_put: path=%s\n", path);
     router_add_layer(&app->router, "PUT", path, handler);
 }
 
 void app_delete(App *app, const char *path, Handler handler) {
-    printf("[DEBUG] app_delete: path=%s\n", path);
+    DEBUG_PRINT("app_delete: path=%s\n", path);
     router_add_layer(&app->router, "DELETE", path, handler);
 }
 
 void app_patch(App *app, const char *path, Handler handler) {
-    printf("[DEBUG] app_patch: path=%s\n", path);
+    DEBUG_PRINT("app_patch: path=%s\n", path);
     router_add_layer(&app->router, "PATCH", path, handler);
 }
 
 void app_options(App *app, const char *path, Handler handler) {
-    printf("[DEBUG] app_options: path=%s\n", path);
+    DEBUG_PRINT("app_options: path=%s\n", path);
     router_add_layer(&app->router, "OPTIONS", path, handler);
 }
 
 void app_use(App *app, Handler handler) {
-    printf("[DEBUG] app_use: registering middleware\n");
+    DEBUG_PRINT_STR("app_use: registering middleware\n");
     router_add_layer(&app->router, "USE", "/", handler);
 }
 
 void app_mount(App *app, const char *prefix, Router *router) {
-    printf("[DEBUG] app_mount: mounting router at prefix=%s\n", prefix);
+    DEBUG_PRINT("app_mount: mounting router at prefix=%s\n", prefix);
     router_mount(&app->router, prefix, router);
 }
 
 void app_error(App *app, ErrorHandler handler) {
-    printf("[DEBUG] app_error: registering error handler\n");
+    DEBUG_PRINT_STR("app_error: registering error handler\n");
     app->error_handler = handler;
 }
 
@@ -167,7 +168,7 @@ void app_listen(App *app, int port) {
 
     // listen
     listen(server_fd, 3);
-    printf("Listening on port %d\n", port);
+    DEBUG_PRINT("Listening on port %d\n", port);
 
     while (1) {
         client_fd = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
@@ -175,7 +176,7 @@ void app_listen(App *app, int port) {
             perror("accept");
             continue;
         }
-        printf("[DEBUG] app_listen: accepted client_fd=%d\n", client_fd);
+        DEBUG_PRINT("app_listen: accepted client_fd=%d\n", client_fd);
 
         char headers_buffer[8192] = {0}; // Buffer for HTTP headers only
         ssize_t headers_read = 0;
@@ -198,12 +199,12 @@ void app_listen(App *app, int port) {
         }
         
         if (!headers_complete) {
-            printf("[DEBUG] app_listen: incomplete headers received\n");
+            DEBUG_PRINT_STR("app_listen: incomplete headers received\n");
             close(client_fd);
             continue;
         }
         
-        printf("[DEBUG] app_listen: received headers (%zd bytes): %.500s\n", headers_read, headers_buffer);
+        DEBUG_PRINT("app_listen: received headers (%zd bytes): %.500s\n", headers_read, headers_buffer);
         
         // Parse headers to determine if we need streaming
         const char *content_length_header = strstr(headers_buffer, "Content-Length: ");
@@ -215,14 +216,14 @@ void app_listen(App *app, int port) {
         // Determine if we should use streaming
         if (transfer_encoding_header && strstr(transfer_encoding_header, "chunked")) {
             use_streaming = 1;
-            printf("[DEBUG] app_listen: chunked encoding detected, using streaming\n");
+            DEBUG_PRINT_STR("app_listen: chunked encoding detected, using streaming\n");
         } else if (content_length_header) {
             content_length = atoi(content_length_header + 16);
-            printf("[DEBUG] app_listen: Content-Length: %d\n", content_length);
+            DEBUG_PRINT("app_listen: Content-Length: %d\n", content_length);
             
             if (content_length > MAX_BODY_SIZE) {
                 use_streaming = 1;
-                printf("[DEBUG] app_listen: large body detected (%d bytes), using streaming\n", content_length);
+                DEBUG_PRINT("app_listen: large body detected (%d bytes), using streaming\n", content_length);
             }
         }
         
@@ -231,20 +232,20 @@ void app_listen(App *app, int port) {
         
         if (use_streaming) {
             // Use streaming initialization
-            printf("[DEBUG] app_listen: initializing request with streaming\n");
+            DEBUG_PRINT_STR("app_listen: initializing request with streaming\n");
             request_init_streaming(req, client_fd, headers_buffer);
             
             // Stream context is set up and ready for on-demand reading
             if (req->stream && !stream_has_error(req->stream)) {
-                printf("[DEBUG] app_listen: streaming context ready for on-demand reading\n");
+                DEBUG_PRINT_STR("app_listen: streaming context ready for on-demand reading\n");
                 // Don't read data automatically - let the application decide when to stream
                 req->body_complete = 0; // Mark as not complete since we haven't read it yet
             } else if (req->stream) {
-                printf("[DEBUG] app_listen: streaming setup failed: %s\n", stream_get_error(req->stream));
+                DEBUG_PRINT("app_listen: streaming setup failed: %s\n", stream_get_error(req->stream));
             }
         } else {
             // Use legacy initialization for small bodies
-            printf("[DEBUG] app_listen: using legacy body handling\n");
+            DEBUG_PRINT_STR("app_listen: using legacy body handling\n");
             
             char complete_request[16384] = {0};
             size_t total_size = headers_read;
@@ -258,11 +259,11 @@ void app_listen(App *app, int port) {
                 if (body_read > 0) {
                     total_size += body_read;
                     complete_request[total_size] = '\0';
-                    printf("[DEBUG] app_listen: read body (%zd bytes) for legacy processing\n", body_read);
+                    DEBUG_PRINT("app_listen: read body (%zd bytes) for legacy processing\n", body_read);
                 }
             }
             
-            printf("[DEBUG] app_listen: complete request (%zu bytes): %.500s\n", total_size, complete_request);
+            DEBUG_PRINT("app_listen: complete request (%zu bytes): %.500s\n", total_size, complete_request);
             request_init(req, client_fd, complete_request);
         }
 
@@ -394,12 +395,12 @@ void app_get_with_metadata(App *app, const char *path, Handler handler, const Ro
     if (config) {
         // For now, we'll need to access the router's layers
         // This would need router API enhancement to get the last added route
-        printf("[DEBUG] app_get_with_metadata: registered route %s with metadata\n", path);
+        DEBUG_PRINT("app_get_with_metadata: registered route %s with metadata\n", path);
         if (config->route_id) {
-            printf("[DEBUG] Route ID: %s\n", config->route_id);
+            DEBUG_PRINT("Route ID: %s\n", config->route_id);
         }
         if (config->summary) {
-            printf("[DEBUG] Summary: %s\n", config->summary);
+            DEBUG_PRINT("Summary: %s\n", config->summary);
         }
     }
 }
@@ -411,9 +412,9 @@ void app_post_with_metadata(App *app, const char *path, Handler handler, const R
     app_post(app, path, handler);
     
     if (config) {
-        printf("[DEBUG] app_post_with_metadata: registered route %s with metadata\n", path);
+        DEBUG_PRINT("app_post_with_metadata: registered route %s with metadata\n", path);
         if (config->route_id) {
-            printf("[DEBUG] Route ID: %s\n", config->route_id);
+            DEBUG_PRINT("Route ID: %s\n", config->route_id);
         }
     }
 }
@@ -425,7 +426,7 @@ void app_put_with_metadata(App *app, const char *path, Handler handler, const Ro
     app_put(app, path, handler);
     
     if (config) {
-        printf("[DEBUG] app_put_with_metadata: registered route %s with metadata\n", path);
+        DEBUG_PRINT("app_put_with_metadata: registered route %s with metadata\n", path);
     }
 }
 
@@ -436,7 +437,7 @@ void app_delete_with_metadata(App *app, const char *path, Handler handler, const
     app_delete(app, path, handler);
     
     if (config) {
-        printf("[DEBUG] app_delete_with_metadata: registered route %s with metadata\n", path);
+        DEBUG_PRINT("app_delete_with_metadata: registered route %s with metadata\n", path);
     }
 }
 
@@ -447,7 +448,7 @@ void app_patch_with_metadata(App *app, const char *path, Handler handler, const 
     app_patch(app, path, handler);
     
     if (config) {
-        printf("[DEBUG] app_patch_with_metadata: registered route %s with metadata\n", path);
+        DEBUG_PRINT("app_patch_with_metadata: registered route %s with metadata\n", path);
     }
 }
 
@@ -458,18 +459,34 @@ void app_options_with_metadata(App *app, const char *path, Handler handler, cons
     app_options(app, path, handler);
     
     if (config) {
-        printf("[DEBUG] app_options_with_metadata: registered route %s with metadata\n", path);
+        DEBUG_PRINT("app_options_with_metadata: registered route %s with metadata\n", path);
     }
 }
 
-// Print all routes with their metadata
-void app_print_routes(App *app) {
-    if (!app) return;
+// Get routes information as a formatted string
+// Returns allocated string that must be freed by caller
+char* app_get_routes_string(App *app) {
+    if (!app) return NULL;
     
-    printf("\n=== APPLICATION ROUTES ===\n");
-    printf("Note: Full route introspection requires router API enhancement\n");
-    printf("For now, showing debug information from route registration\n");
-    printf("==========================\n\n");
+    char *result = malloc(512);
+    if (!result) return NULL;
+    
+    snprintf(result, 512, 
+        "\n=== APPLICATION ROUTES ===\n"
+        "Note: Full route introspection requires router API enhancement\n"
+        "For now, showing debug information from route registration\n"
+        "==========================\n\n");
+    
+    return result;
+}
+
+// Print all routes with their metadata (convenience function)
+void app_print_routes(App *app) {
+    char *routes_str = app_get_routes_string(app);
+    if (routes_str) {
+        printf("%s", routes_str);
+        free(routes_str);
+    }
 }
 
 // Generate OpenAPI documentation for all routes
@@ -499,8 +516,8 @@ Route** app_get_routes_by_tag(App *app, const char *tag, int *count) {
     if (!app || !tag || !count) return NULL;
     
     *count = 0;
-    printf("[DEBUG] app_get_routes_by_tag: searching for tag '%s'\n", tag);
-    printf("[DEBUG] Note: Full implementation requires router API enhancement\n");
+    DEBUG_PRINT("app_get_routes_by_tag: searching for tag '%s'\n", tag);
+    DEBUG_PRINT_STR("Note: Full implementation requires router API enhancement\n");
     
     return NULL;
 }
@@ -509,8 +526,8 @@ Route** app_get_routes_by_tag(App *app, const char *tag, int *count) {
 Route* app_get_route_by_id(App *app, const char *route_id) {
     if (!app || !route_id) return NULL;
     
-    printf("[DEBUG] app_get_route_by_id: searching for route '%s'\n", route_id);
-    printf("[DEBUG] Note: Full implementation requires router API enhancement\n");
+    DEBUG_PRINT("app_get_route_by_id: searching for route '%s'\n", route_id);
+    DEBUG_PRINT_STR("Note: Full implementation requires router API enhancement\n");
     
     return NULL;
 }

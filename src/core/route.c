@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "route.h"
+#include "../debug.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -285,7 +286,7 @@ int calculate_route_priority(RoutePattern *pattern) {
 RoutePattern *compile_route_pattern(const char *pattern) {
     if (!pattern) return NULL;
     
-    printf("[DEBUG] compile_route_pattern: compiling '%s'\n", pattern);
+    DEBUG_PRINT("compile_route_pattern: compiling '%s'\n", pattern);
     
     RoutePattern *route_pattern = malloc(sizeof(RoutePattern));
     route_pattern->original_pattern = strdup(pattern);
@@ -309,7 +310,7 @@ RoutePattern *compile_route_pattern(const char *pattern) {
             seg->literal_value = NULL;
             seg->param = NULL;
             route_pattern->has_wildcards = 1;
-            printf("[DEBUG] compile_route_pattern: wildcard segment at %d\n", i);
+            DEBUG_PRINT("compile_route_pattern: wildcard segment at %d\n", i);
             
         } else if (segment[0] == ':') {
             // Parameter segment
@@ -335,7 +336,7 @@ RoutePattern *compile_route_pattern(const char *pattern) {
                 free(param_copy);
                 
                 route_pattern->param_count++;
-                printf("[DEBUG] compile_route_pattern: param '%s' (type=%d, optional=%d) at %d\n", 
+                DEBUG_PRINT("compile_route_pattern: param '%s' (type=%d, optional=%d) at %d\n", 
                        seg->param->name, seg->param->type, is_optional, i);
                 
                 free(param_name);
@@ -351,13 +352,13 @@ RoutePattern *compile_route_pattern(const char *pattern) {
             seg->type = SEGMENT_LITERAL;
             seg->literal_value = strdup(segment);
             seg->param = NULL;
-            printf("[DEBUG] compile_route_pattern: literal '%s' at %d\n", segment, i);
+            DEBUG_PRINT("compile_route_pattern: literal '%s' at %d\n", segment, i);
         }
     }
     
     // Calculate priority
     route_pattern->priority = calculate_route_priority(route_pattern);
-    printf("[DEBUG] compile_route_pattern: pattern '%s' priority=%d\n", pattern, route_pattern->priority);
+    DEBUG_PRINT("compile_route_pattern: pattern '%s' priority=%d\n", pattern, route_pattern->priority);
     
     // Cleanup
     for (int i = 0; i < segment_count; i++) {
@@ -376,7 +377,7 @@ RouteMatch route_pattern_match(RoutePattern *pattern, const char *path) {
         return match;
     }
     
-    printf("[DEBUG] route_pattern_match: matching '%s' against pattern '%s'\n", path, pattern->original_pattern);
+    DEBUG_PRINT("route_pattern_match: matching '%s' against pattern '%s'\n", path, pattern->original_pattern);
     
     // Split incoming path into segments
     int path_segment_count;
@@ -400,12 +401,12 @@ RouteMatch route_pattern_match(RoutePattern *pattern, const char *path) {
         switch (seg->type) {
             case SEGMENT_LITERAL: {
                 if (path_idx >= path_segment_count) {
-                    printf("[DEBUG] route_pattern_match: path too short for literal segment\n");
+                    DEBUG_PRINT_STR("route_pattern_match: path too short for literal segment\n");
                     goto no_match;
                 }
                 
                 if (strcmp(seg->literal_value, path_segments[path_idx]) != 0) {
-                    printf("[DEBUG] route_pattern_match: literal mismatch '%s' != '%s'\n", 
+                    DEBUG_PRINT("route_pattern_match: literal mismatch '%s' != '%s'\n", 
                            seg->literal_value, path_segments[path_idx]);
                     goto no_match;
                 }
@@ -415,13 +416,13 @@ RouteMatch route_pattern_match(RoutePattern *pattern, const char *path) {
             
             case SEGMENT_PARAMETER: {
                 if (path_idx >= path_segment_count) {
-                    printf("[DEBUG] route_pattern_match: path too short for parameter segment\n");
+                    DEBUG_PRINT_STR("route_pattern_match: path too short for parameter segment\n");
                     goto no_match;
                 }
                 
                 char *value = path_segments[path_idx];
                 if (!validate_parameter_value(value, seg->param->type)) {
-                    printf("[DEBUG] route_pattern_match: parameter validation failed for '%s'\n", value);
+                    DEBUG_PRINT("route_pattern_match: parameter validation failed for '%s'\n", value);
                     goto no_match;
                 }
                 
@@ -433,7 +434,7 @@ RouteMatch route_pattern_match(RoutePattern *pattern, const char *path) {
                 param_idx++;
                 path_idx++;
                 
-                printf("[DEBUG] route_pattern_match: captured parameter '%s' = '%s'\n", 
+                DEBUG_PRINT("route_pattern_match: captured parameter '%s' = '%s'\n", 
                        seg->param->name, value);
                 break;
             }
@@ -450,7 +451,7 @@ RouteMatch route_pattern_match(RoutePattern *pattern, const char *path) {
                         param_idx++;
                         path_idx++;
                         
-                        printf("[DEBUG] route_pattern_match: captured optional parameter '%s' = '%s'\n", 
+                        DEBUG_PRINT("route_pattern_match: captured optional parameter '%s' = '%s'\n", 
                                seg->param->name, value);
                     }
                     // If invalid, treat as not present (optional)
@@ -476,7 +477,7 @@ RouteMatch route_pattern_match(RoutePattern *pattern, const char *path) {
                         strcat(match.wildcard_path, path_segments[i]);
                     }
                     
-                    printf("[DEBUG] route_pattern_match: captured wildcard = '%s'\n", match.wildcard_path);
+                    DEBUG_PRINT("route_pattern_match: captured wildcard = '%s'\n", match.wildcard_path);
                 }
                 
                 // Wildcard matches everything remaining
@@ -488,18 +489,18 @@ RouteMatch route_pattern_match(RoutePattern *pattern, const char *path) {
     
     // Check if we consumed all path segments (unless there's a wildcard)
     if (path_idx != path_segment_count && !pattern->has_wildcards) {
-        printf("[DEBUG] route_pattern_match: path has extra segments\n");
+        DEBUG_PRINT_STR("route_pattern_match: path has extra segments\n");
         goto no_match;
     }
     
     match.matched = 1;
     match.param_count = param_idx;
     
-    printf("[DEBUG] route_pattern_match: MATCH! captured %d parameters\n", param_idx);
+    DEBUG_PRINT("route_pattern_match: MATCH! captured %d parameters\n", param_idx);
     goto cleanup;
     
 no_match:
-    printf("[DEBUG] route_pattern_match: NO MATCH\n");
+    DEBUG_PRINT_STR("route_pattern_match: NO MATCH\n");
     // Free any allocated memory from partial match
     if (match.params) {
         for (int i = 0; i < match.param_count; i++) {
@@ -1183,85 +1184,118 @@ char* generate_route_openapi_json(const Route *route, const char *base_path) {
     return json;
 }
 
-// Print route information to console
-void print_route_info(const Route *route) {
-    if (!route || !route->pattern) return;
+// Get route information as a formatted string
+// Returns allocated string that must be freed by caller
+char* get_route_info_string(const Route *route) {
+    if (!route || !route->pattern) return NULL;
     
-    printf("=== Route Information ===\n");
-    printf("Pattern: %s\n", route->pattern->original_pattern);
+    // Allocate a large buffer for the formatted output
+    size_t buffer_size = 4096;
+    char *result = malloc(buffer_size);
+    if (!result) return NULL;
+    
+    char *ptr = result;
+    size_t remaining = buffer_size;
+    
+    // Helper macro to safely append formatted text
+    #define APPEND_FORMAT(...) do { \
+        int written = snprintf(ptr, remaining, __VA_ARGS__); \
+        if (written > 0 && (size_t)written < remaining) { \
+            ptr += written; \
+            remaining -= written; \
+        } else { \
+            /* Buffer too small, but continue to avoid truncation */ \
+        } \
+    } while(0)
+    
+    APPEND_FORMAT("=== Route Information ===\n");
+    APPEND_FORMAT("Pattern: %s\n", route->pattern->original_pattern);
     
     if (route->route_id) {
-        printf("ID: %s\n", route->route_id);
+        APPEND_FORMAT("ID: %s\n", route->route_id);
     }
     
     if (route->metadata) {
         RouteMetadata *meta = route->metadata;
         
         if (meta->summary) {
-            printf("Summary: %s\n", meta->summary);
+            APPEND_FORMAT("Summary: %s\n", meta->summary);
         }
         
         if (meta->description) {
-            printf("Description: %s\n", meta->description);
+            APPEND_FORMAT("Description: %s\n", meta->description);
         }
         
         if (meta->tags && meta->tag_count > 0) {
-            printf("Tags: ");
+            APPEND_FORMAT("Tags: ");
             for (int i = 0; i < meta->tag_count; i++) {
-                printf("%s%s", meta->tags[i], (i < meta->tag_count - 1) ? ", " : "");
+                APPEND_FORMAT("%s%s", meta->tags[i], (i < meta->tag_count - 1) ? ", " : "");
             }
-            printf("\n");
+            APPEND_FORMAT("\n");
         }
         
         if (meta->parameters && meta->param_doc_count > 0) {
-            printf("Parameters:\n");
+            APPEND_FORMAT("Parameters:\n");
             for (int i = 0; i < meta->param_doc_count; i++) {
                 ParameterDoc *param = &meta->parameters[i];
-                printf("  - %s (%s)%s", param->name,
+                APPEND_FORMAT("  - %s (%s)%s", param->name,
                        param->type == PARAM_NUMBER ? "number" : 
                        param->type == PARAM_SLUG ? "slug" :
                        param->type == PARAM_UUID ? "uuid" : "string",
                        param->required ? " *required*" : " *optional*");
                 
                 if (param->description) {
-                    printf(" - %s", param->description);
+                    APPEND_FORMAT(" - %s", param->description);
                 }
                 if (param->example) {
-                    printf(" (e.g., %s)", param->example);
+                    APPEND_FORMAT(" (e.g., %s)", param->example);
                 }
-                printf("\n");
+                APPEND_FORMAT("\n");
             }
         }
         
         if (meta->responses && meta->response_count > 0) {
-            printf("Responses:\n");
+            APPEND_FORMAT("Responses:\n");
             for (int i = 0; i < meta->response_count; i++) {
                 ResponseDoc *resp = &meta->responses[i];
-                printf("  - %d: %s", resp->status_code, 
+                APPEND_FORMAT("  - %d: %s", resp->status_code, 
                        resp->description ? resp->description : "No description");
                 if (resp->content_type) {
-                    printf(" (%s)", resp->content_type);
+                    APPEND_FORMAT(" (%s)", resp->content_type);
                 }
-                printf("\n");
+                APPEND_FORMAT("\n");
             }
         }
         
         if (meta->deprecated_reason) {
-            printf("⚠️  DEPRECATED: %s\n", meta->deprecated_reason);
+            APPEND_FORMAT("DEPRECATED: %s\n", meta->deprecated_reason);
         }
         
         if (meta->examples && meta->example_count > 0) {
-            printf("Examples:\n");
+            APPEND_FORMAT("Examples:\n");
             for (int i = 0; i < meta->example_count; i++) {
-                printf("  %s\n", meta->examples[i]);
+                APPEND_FORMAT("  %s\n", meta->examples[i]);
             }
         }
     }
     
-    printf("Priority: %d\n", route->pattern->priority);
-    printf("Parameters: %d\n", route->pattern->param_count);
-    printf("Has Wildcards: %s\n", route->pattern->has_wildcards ? "yes" : "no");
-    printf("========================\n\n");
+    APPEND_FORMAT("Priority: %d\n", route->pattern->priority);
+    APPEND_FORMAT("Parameters: %d\n", route->pattern->param_count);
+    APPEND_FORMAT("Has Wildcards: %s\n", route->pattern->has_wildcards ? "yes" : "no");
+    APPEND_FORMAT("========================\n\n");
+    
+    #undef APPEND_FORMAT
+    
+    return result;
+}
+
+// Print route information to console (convenience function)
+void print_route_info(const Route *route) {
+    char *info_str = get_route_info_string(route);
+    if (info_str) {
+        printf("%s", info_str);
+        free(info_str);
+    }
 }
 
 // Find routes by tag
@@ -1384,7 +1418,7 @@ char* generate_routes_documentation(Route **routes, int route_count) {
             if (meta->deprecated_reason) {
                 char deprecated_str[512];
                 snprintf(deprecated_str, sizeof(deprecated_str), 
-                        "⚠️ **DEPRECATED:** %s\n", meta->deprecated_reason);
+                        "**DEPRECATED:** %s\n", meta->deprecated_reason);
                 APPEND_STR(deprecated_str);
             }
         }

@@ -179,6 +179,7 @@ void free_route_metadata(RouteMetadata *metadata);
 // Route documentation and introspection
 char* generate_route_openapi_json(const Route *route, const char *base_path);
 char* generate_routes_documentation(Route **routes, int route_count);
+char* get_route_info_string(const Route *route);  // Returns allocated string - caller must free
 void print_route_info(const Route *route);
 Route** find_routes_by_tag(Route **routes, int route_count, const char *tag, int *found_count);
 Route* find_route_by_id(Route **routes, int route_count, const char *route_id);

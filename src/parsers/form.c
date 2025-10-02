@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "form.h"
+#include "../debug.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -40,7 +41,7 @@ int parse_url_encoded_form(FormData *form, const char *body) {
     
     form_data_init(form);
     
-    printf("[DEBUG] Parsing URL-encoded form data: %.100s\n", body);
+    DEBUG_PRINT("Parsing URL-encoded form data: %.100s\n", body);
     
     char *body_copy = strdup(body);
     char *pair = strtok(body_copy, "&");
@@ -59,7 +60,7 @@ int parse_url_encoded_form(FormData *form, const char *body) {
             field->type = FORM_FIELD_TEXT;
             form->field_count++;
             
-            printf("[DEBUG] Parsed form field: '%s' = '%.50s'\n", 
+            DEBUG_PRINT("Parsed form field: '%s' = '%.50s'\n", 
                    field->name, field->value);
         } else {
             // Field without value
@@ -69,7 +70,7 @@ int parse_url_encoded_form(FormData *form, const char *body) {
             field->type = FORM_FIELD_TEXT;
             form->field_count++;
             
-            printf("[DEBUG] Parsed form field (no value): '%s'\n", field->name);
+            DEBUG_PRINT("Parsed form field (no value): '%s'\n", field->name);
         }
         
         pair = strtok(NULL, "&");
@@ -78,7 +79,7 @@ int parse_url_encoded_form(FormData *form, const char *body) {
     free(body_copy);
     form->parsed = 1;
     
-    printf("[DEBUG] Parsed %d form fields from URL-encoded data\n", form->field_count);
+    DEBUG_PRINT("Parsed %d form fields from URL-encoded data\n", form->field_count);
     return 1;
 }
 
@@ -115,7 +116,7 @@ char* extract_multipart_boundary(const char *content_type) {
     strncpy(boundary, boundary_start, boundary_len);
     boundary[boundary_len] = '\0';
     
-    printf("[DEBUG] Extracted boundary: '%s'\n", boundary);
+    DEBUG_PRINT("Extracted boundary: '%s'\n", boundary);
     return boundary;
 }
 
@@ -161,7 +162,7 @@ int parse_multipart_form(FormData *form, const char *body, const char *boundary)
     form_data_init(form);
     strncpy(form->boundary, boundary, sizeof(form->boundary) - 1);
     
-    printf("[DEBUG] Parsing multipart form data with boundary: %s\n", boundary);
+    DEBUG_PRINT("Parsing multipart form data with boundary: %s\n", boundary);
     
     // Create boundary markers
     char start_boundary[MAX_BOUNDARY_SIZE + 10];
@@ -206,7 +207,7 @@ int parse_multipart_form(FormData *form, const char *body, const char *boundary)
         strncpy(headers, current, headers_len);
         headers[headers_len] = '\0';
         
-        printf("[DEBUG] Multipart headers: %.200s\n", headers);
+        DEBUG_PRINT("Multipart headers: %.200s\n", headers);
         
         FormField *field = &form->fields[form->field_count];
         
@@ -254,7 +255,7 @@ int parse_multipart_form(FormData *form, const char *body, const char *boundary)
             field->file_data = current;
             field->file_size = data_len;
             
-            printf("[DEBUG] Parsed file field: name='%s', filename='%s', size=%zu, type='%s'\n",
+            DEBUG_PRINT("Parsed file field: name='%s', filename='%s', size=%zu, type='%s'\n",
                    field->name, field->filename, field->file_size, field->content_type);
         } else {
             // Text field
@@ -267,7 +268,7 @@ int parse_multipart_form(FormData *form, const char *body, const char *boundary)
                 field->value[MAX_FIELD_VALUE_SIZE - 1] = '\0';
             }
             
-            printf("[DEBUG] Parsed text field: name='%s', value='%.50s'\n",
+            DEBUG_PRINT("Parsed text field: name='%s', value='%.50s'\n",
                    field->name, field->value);
         }
         
@@ -281,7 +282,7 @@ int parse_multipart_form(FormData *form, const char *body, const char *boundary)
     }
     
     form->parsed = 1;
-    printf("[DEBUG] Parsed %d multipart form fields\n", form->field_count);
+    DEBUG_PRINT("Parsed %d multipart form fields\n", form->field_count);
     return 1;
 }
 

@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "request.h"
+#include "../debug.h"
 #include "../core/route.h"
 #include <string.h>
 #include <stdio.h>
@@ -265,18 +266,18 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
     parse_headers(raw_request, req->headers, &req->header_count);
     
     // Parse body (handle both \r\n\r\n and \n\n patterns)
-    printf("[DEBUG] Looking for body separator in raw_request (first 200 chars): %.200s\n", raw_request);
+    DEBUG_PRINT("Looking for body separator in raw_request (first 200 chars): %.200s\n", raw_request);
     const char *body_start = strstr(raw_request, "\r\n\r\n");
     if (body_start) {
         body_start += 4; // Skip \r\n\r\n
-        printf("[DEBUG] Found \\r\\n\\r\\n separator\n");
+        DEBUG_PRINT_STR("Found \\r\\n\\r\\n separator\n");
     } else {
         body_start = strstr(raw_request, "\n\n");
         if (body_start) {
             body_start += 2; // Skip \n\n
-            printf("[DEBUG] Found \\n\\n separator\n");
+            DEBUG_PRINT_STR("Found \\n\\n separator\n");
         } else {
-            printf("[DEBUG] No body separator found\n");
+            DEBUG_PRINT_STR("No body separator found\n");
         }
     }
     
@@ -285,14 +286,14 @@ void request_init(Request *req, int client_fd, const char *raw_request) {
         size_t max_copy = (body_len < MAX_BODY_SIZE - 1) ? body_len : MAX_BODY_SIZE - 1;
         strncpy(req->body, body_start, max_copy);
         req->body[max_copy] = '\0';
-        printf("[DEBUG] Parsed body length: %zu (original: %zu)\n", strlen(req->body), body_len);
-        printf("[DEBUG] Body first 100 chars: %.100s\n", req->body);
+        DEBUG_PRINT("Parsed body length: %zu (original: %zu)\n", strlen(req->body), body_len);
+        DEBUG_PRINT("Body first 100 chars: %.100s\n", req->body);
     } else {
         req->body[0] = '\0';
-        printf("[DEBUG] No body found in request\n");
+        DEBUG_PRINT_STR("No body found in request\n");
     }
     
-    printf("[DEBUG] request_init: method=%s, path=%s, query=%s\n", 
+    DEBUG_PRINT("request_init: method=%s, path=%s, query=%s\n", 
            req->method, req->path, req->query_string);
 }
 
@@ -314,11 +315,11 @@ void request_set_route_params(Request *req, void *match_ptr) {
         
         req->param_count++;
         
-        printf("[DEBUG] request_set_route_params: set param '%s' = '%s'\n", 
+        DEBUG_PRINT("request_set_route_params: set param '%s' = '%s'\n", 
                req->params[i].key, req->params[i].value);
     }
     
-    printf("[DEBUG] request_set_route_params: set %d parameters\n", req->param_count);
+    DEBUG_PRINT("request_set_route_params: set %d parameters\n", req->param_count);
 }
 
 // Initialize request with streaming support (headers already parsed)
@@ -340,9 +341,9 @@ void request_init_streaming(Request *req, int client_fd, const char *headers_onl
     if (req->stream) {
         req->body_streamed = 1;
         req->body_complete = 0;
-        printf("[DEBUG] request_init_streaming: Created stream context\n");
+        DEBUG_PRINT_STR("request_init_streaming: Created stream context\n");
     } else {
-        printf("[DEBUG] request_init_streaming: Failed to create stream context\n");
+        DEBUG_PRINT_STR("request_init_streaming: Failed to create stream context\n");
         req->body_streamed = 0;
         req->body_complete = 1;
     }
@@ -398,7 +399,7 @@ JsonValue* request_get_json(Request *req) {
         return NULL;
     }
     
-    printf("[DEBUG] request_get_json: successfully parsed JSON from request body\n");
+    DEBUG_PRINT_STR("request_get_json: successfully parsed JSON from request body\n");
     return req->parsed_json;
 }
 
@@ -454,18 +455,19 @@ int request_validate_json_schema(Request *req, JsonSchema *schema) {
     
     // Print validation errors for debugging
     if (!is_valid) {
-        printf("[DEBUG] JSON validation failed for schema '%s':\n", 
+        DEBUG_PRINT("JSON validation failed for schema '%s':\n", 
                schema->schema_name ? schema->schema_name : "unnamed");
         for (int i = 0; i < result->error_count; i++) {
             JsonValidationError *error = &result->errors[i];
-            printf("[DEBUG]   - %s: %s (expected %s, got %s)\n",
+            (void)error; // Mark as potentially unused when DEBUG is disabled
+            DEBUG_PRINT("  - %s: %s (expected %s, got %s)\n",
                    error->field_path,
                    error->error_message,
                    json_type_name(error->expected_type),
                    json_type_name(error->actual_type));
         }
     } else {
-        printf("[DEBUG] JSON validation passed for schema '%s'\n",
+        DEBUG_PRINT("JSON validation passed for schema '%s'\n",
                schema->schema_name ? schema->schema_name : "unnamed");
     }
     
@@ -522,7 +524,7 @@ FormData* request_get_form(Request *req) {
     // Mark as parsed to avoid re-parsing
     req->form_parsed = 1;
     
-    printf("[DEBUG] Parsing form data from request body\n");
+    DEBUG_PRINT_STR("Parsing form data from request body\n");
     
     // Check if body is empty
     if (!req->body[0]) {
@@ -541,7 +543,7 @@ FormData* request_get_form(Request *req) {
             return NULL;
         }
         
-        printf("[DEBUG] Parsing multipart form data with boundary: %s\n", boundary);
+        DEBUG_PRINT("Parsing multipart form data with boundary: %s\n", boundary);
         
         int success = parse_multipart_form(&req->form_data, req->body, boundary);
         free(boundary);
@@ -551,7 +553,7 @@ FormData* request_get_form(Request *req) {
         }
     } else if (request_is_form_data(req)) {
         // Parse URL-encoded form data
-        printf("[DEBUG] Parsing URL-encoded form data\n");
+        DEBUG_PRINT_STR("Parsing URL-encoded form data\n");
         
         int success = parse_url_encoded_form(&req->form_data, req->body);
         if (!success) {
@@ -563,7 +565,7 @@ FormData* request_get_form(Request *req) {
         return NULL;
     }
     
-    printf("[DEBUG] Successfully parsed form data with %d fields\n", req->form_data.field_count);
+    DEBUG_PRINT("Successfully parsed form data with %d fields\n", req->form_data.field_count);
     return &req->form_data;
 }
 

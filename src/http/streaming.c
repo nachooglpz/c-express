@@ -1,5 +1,7 @@
 #include "streaming.h"
+#include "../debug.h"
 #include <stdlib.h>
+#include "../debug.h"
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -27,7 +29,7 @@ StreamContext* stream_create(int client_fd, const char *content_length_header,
         stream->mode = BODY_MODE_CHUNKED;
         stream->is_chunked = 1;
         stream->content_length = 0; // Unknown until all chunks read
-        printf("[DEBUG] Stream: Using chunked transfer encoding\n");
+        DEBUG_PRINT("Stream: Using chunked transfer encoding%s", "");
     } else if (content_length_header) {
         // Content-Length specified
         stream->content_length = atoll(content_length_header);
@@ -42,7 +44,7 @@ StreamContext* stream_create(int client_fd, const char *content_length_header,
                 free(stream);
                 return NULL;
             }
-            printf("[DEBUG] Stream: Using memory mode for %zu bytes\n", stream->content_length);
+            DEBUG_PRINT("Stream: Using memory mode for %zu bytes", stream->content_length);
         } else if (stream->content_length <= MAX_BODY_SIZE_LARGE) {
             // Large body - stream to temporary file
             stream->mode = BODY_MODE_STREAM;
@@ -58,7 +60,7 @@ StreamContext* stream_create(int client_fd, const char *content_length_header,
                 free(stream);
                 return NULL;
             }
-            printf("[DEBUG] Stream: Using file mode for %zu bytes, temp file: %s\n", 
+            DEBUG_PRINT("Stream: Using file mode for %zu bytes, temp file: %s\n", 
                    stream->content_length, stream->temp_filename);
         } else {
             // Body too large
@@ -78,7 +80,7 @@ StreamContext* stream_create(int client_fd, const char *content_length_header,
         if (stream->memory_buffer) {
             stream->memory_buffer[0] = '\0';
         }
-        printf("[DEBUG] Stream: No content length, using empty memory mode\n");
+        DEBUG_PRINT_STR("Stream: No content length, using empty memory mode\n");
     }
     
     return stream;
@@ -165,7 +167,7 @@ static int stream_read_chunked_data(StreamContext *stream, char *buffer,
             stream->current_chunk_size = parse_chunk_size(chunk_line);
             stream->current_chunk_read = 0;
             
-            printf("[DEBUG] Stream: New chunk size: %zu\n", stream->current_chunk_size);
+            DEBUG_PRINT("Stream: New chunk size: %zu\n", stream->current_chunk_size);
             
             if (stream->current_chunk_size == 0) {
                 // Final chunk

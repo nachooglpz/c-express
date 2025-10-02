@@ -2,6 +2,7 @@
     "files.associations": {
         "unistd.h": "c",
         "response.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "json.h": "c"
     }
 }

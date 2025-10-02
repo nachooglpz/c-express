@@ -145,6 +145,7 @@ void json_free_schema(JsonSchema *schema);
 
 // Utility functions
 const char* json_type_name(JsonType type);
+char* json_value_to_string(JsonValue *value, int indent);  // Returns allocated string - caller must free
 void json_print_value(JsonValue *value, int indent);
 
 #endif

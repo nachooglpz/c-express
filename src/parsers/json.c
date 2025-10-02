@@ -1,5 +1,8 @@
 #define _GNU_SOURCE
 #include "json.h"
+#include "../debug.h"
+#include "json_builder.h"
+#include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
@@ -413,7 +416,7 @@ JsonValue* json_parse(const char *json_text) {
     char *error = NULL;
     JsonValue *result = json_parse_with_error(json_text, &error);
     if (error) {
-        printf("[JSON Parse Error]: %s\n", error);
+        ERROR_PRINT("JSON Parse Error: %s\n", error);
         free(error);
     }
     return result;
@@ -883,56 +886,95 @@ const char* json_type_name(JsonType type) {
     }
 }
 
-void json_print_value(JsonValue *value, int indent) {
+// Forward declaration for recursive function
+static void json_value_to_string_recursive(JsonValue *value, int indent, JsonStringBuilder *builder);
+
+// Convert JSON value to formatted string
+// Returns allocated string that must be freed by caller
+char* json_value_to_string(JsonValue *value, int indent) {
     if (!value) {
-        printf("null");
+        char *result = malloc(5);
+        if (result) strcpy(result, "null");
+        return result;
+    }
+    
+    JsonStringBuilder *builder = json_builder_create(1024);
+    if (!builder) return NULL;
+    
+    json_value_to_string_recursive(value, indent, builder);
+    
+    return json_builder_finalize(builder);
+}
+
+static void json_value_to_string_recursive(JsonValue *value, int indent, JsonStringBuilder *builder) {
+    if (!value) {
+        json_builder_append(builder, "null");
         return;
     }
     
-    for (int i = 0; i < indent; i++) printf("  ");
+    // Add indentation
+    for (int i = 0; i < indent; i++) {
+        json_builder_append(builder, "  ");
+    }
     
     switch (value->type) {
         case JSON_NULL:
-            printf("null");
+            json_builder_append(builder, "null");
             break;
         case JSON_BOOL:
-            printf("%s", value->data.bool_value ? "true" : "false");
+            json_builder_append(builder, value->data.bool_value ? "true" : "false");
             break;
         case JSON_NUMBER:
-            printf("%g", value->data.number_value);
+            json_builder_append_format(builder, "%g", value->data.number_value);
             break;
         case JSON_STRING:
-            printf("\"%s\"", value->data.string_value ? value->data.string_value : "");
+            json_builder_append_format(builder, "\"%s\"", 
+                value->data.string_value ? value->data.string_value : "");
             break;
         case JSON_ARRAY: {
             JsonArray *arr = value->data.array_value;
-            printf("[\n");
+            json_builder_append(builder, "[\n");
             for (int i = 0; i < arr->count; i++) {
-                json_print_value(arr->items[i], indent + 1);
-                if (i < arr->count - 1) printf(",");
-                printf("\n");
+                json_value_to_string_recursive(arr->items[i], indent + 1, builder);
+                if (i < arr->count - 1) json_builder_append(builder, ",");
+                json_builder_append(builder, "\n");
             }
-            for (int i = 0; i < indent; i++) printf("  ");
-            printf("]");
+            for (int i = 0; i < indent; i++) {
+                json_builder_append(builder, "  ");
+            }
+            json_builder_append(builder, "]");
             break;
         }
         case JSON_OBJECT: {
             JsonObject *obj = value->data.object_value;
-            printf("{\n");
+            json_builder_append(builder, "{\n");
             JsonProperty *prop = obj->properties;
             int count = 0;
             while (prop) {
-                for (int i = 0; i <= indent; i++) printf("  ");
-                printf("\"%s\": ", prop->key);
-                json_print_value(prop->value, 0);
+                for (int i = 0; i <= indent; i++) {
+                    json_builder_append(builder, "  ");
+                }
+                json_builder_append_format(builder, "\"%s\": ", prop->key);
+                json_value_to_string_recursive(prop->value, 0, builder);
                 count++;
-                if (count < obj->property_count) printf(",");
-                printf("\n");
+                if (count < obj->property_count) json_builder_append(builder, ",");
+                json_builder_append(builder, "\n");
                 prop = prop->next;
             }
-            for (int i = 0; i < indent; i++) printf("  ");
-            printf("}");
+            for (int i = 0; i < indent; i++) {
+                json_builder_append(builder, "  ");
+            }
+            json_builder_append(builder, "}");
             break;
         }
+    }
+}
+
+// Print JSON value to console (convenience function)
+void json_print_value(JsonValue *value, int indent) {
+    char *json_str = json_value_to_string(value, indent);
+    if (json_str) {
+        printf("%s", json_str);
+        free(json_str);
     }
 }

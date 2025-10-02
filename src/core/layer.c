@@ -1,5 +1,7 @@
 #include "layer.h"
+#include "../debug.h"
 #include "route.h"
+#include "../debug.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,7 +63,7 @@ int layer_match(Layer *layer, const char *method, const char *path) {
     }
     
     if (layer->method && strcmp(layer->method, "USE") == 0) {
-        printf("[DEBUG] layer_match: middleware matched for method=%s, path=%s\n", method, path);
+        DEBUG_PRINT("layer_match: middleware matched for method=%s, path=%s\n", method, path);
         
         // For middleware with patterns, still check the path
         if (layer->pattern) {
@@ -85,11 +87,11 @@ int layer_match(Layer *layer, const char *method, const char *path) {
         size_t prefix_len = strlen(layer->mount_prefix);
         if (strncmp(path, layer->mount_prefix, prefix_len) == 0) {
             // Path matches prefix, this router should handle it
-            printf("[DEBUG] layer_match: router match=1 for method=%s, path=%s, mount_prefix=%s\n",
+            DEBUG_PRINT("layer_match: router match=1 for method=%s, path=%s, mount_prefix=%s\n",
                    method, path, layer->mount_prefix);
             return 1;
         } else {
-            printf("[DEBUG] layer_match: router match=0 for method=%s, path=%s, mount_prefix=%s\n",
+            DEBUG_PRINT("layer_match: router match=0 for method=%s, path=%s, mount_prefix=%s\n",
                    method, path, layer->mount_prefix);
             return 0;
         }
@@ -111,7 +113,7 @@ int layer_match(Layer *layer, const char *method, const char *path) {
                 int error_count = 0;
                 
                 if (!validate_route_match(&match, &errors, &error_count)) {
-                    printf("[DEBUG] layer_match: constraint validation failed (%d errors)\n", error_count);
+                    DEBUG_PRINT("layer_match: constraint validation failed (%d errors)\n", error_count);
                     
                     // Free validation errors
                     for (int i = 0; i < error_count; i++) {
@@ -126,7 +128,7 @@ int layer_match(Layer *layer, const char *method, const char *path) {
             
             // Store match result for parameter access
             layer->last_match = duplicate_route_match(&match);
-            printf("[DEBUG] layer_match: advanced pattern matched with %d parameters\n", match.param_count);
+            DEBUG_PRINT("layer_match: advanced pattern matched with %d parameters\n", match.param_count);
             free_route_match(&match);
         } else {
             free_route_match(&match);
@@ -138,7 +140,7 @@ int layer_match(Layer *layer, const char *method, const char *path) {
     
     int match = method_match && path_match;
     
-    printf("[DEBUG] layer_match: route match=%d for method=%s, path=%s, layer_method=%s, layer_path=%s\n",
+    DEBUG_PRINT("layer_match: route match=%d for method=%s, path=%s, layer_method=%s, layer_path=%s\n",
            match, method, path, layer->method ? layer->method : "NULL", layer->path ? layer->path : "NULL");
     
     return match;
