@@ -1,59 +1,79 @@
-# C-Express Framework - Professional .gitignore
-# ==============================================
+# C-Express NPM Package - Node.js Native Addon .gitignore
+# ========================================================
 
-# Build Artifacts
-# ---------------
+# Node.js Dependencies
+# --------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# NPM Package Files
+# -----------------
+*.tgz
+package-lock.json
+.npmrc
+.yarnrc
+.yarn/
+.pnp/
+.pnp.js
+
+# Native Addon Build Artifacts
+# ----------------------------
 build/
-lib/
-dist/
+Release/
+Debug/
+*.node
+*.addon
+
+# node-gyp Build Files
+# -------------------
+.node-gyp/
+node_gyp_bins/
+binding.Makefile
+config.gypi
+
+# Prebuilds
+# ---------
+prebuilds/
+*.tar.gz
+
+# C/C++ Build Artifacts
+# ---------------------
 *.o
+*.obj
 *.a
+*.lib
 *.so
 *.so.*
 *.dylib
 *.dll
 *.exe
+*.pdb
 
-# Compiled Binaries
-# -----------------
-c-express-server
-c-server
+# Compiled Test Binaries
+# ----------------------
 test_*
 !test_*.c
-examples/*/demo-server
-examples/*/main
-examples/*/server
+!test_*.js
+!test/
 
-# Debug and Profiling
+# Coverage and Testing
 # -------------------
-*.dSYM/
-*.gdb_history
-*.pdb
-core
-core.*
-vgcore.*
-callgrind.out.*
-cachegrind.out.*
-massif.out.*
-*.gcov
-*.gcda
-*.gcno
-*.profraw
-
-# Coverage Reports
-# ----------------
 coverage/
-*.info
-lcov.info
-htmlcov/
+.nyc_output/
+*.lcov
 .coverage
+htmlcov/
+test-results/
+mocha-results.json
 
-# Static Analysis
-# ---------------
-cppcheck-results.xml
-scan-build-*/
-.clang_complete
-compile_commands.json
+# Development Tools
+# -----------------
+.cache/
+.tmp/
+.temp/
 
 # IDEs and Editors
 # ----------------
@@ -63,6 +83,12 @@ compile_commands.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# WebStorm/IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
 
 # Vim/Neovim
 *.swp
@@ -81,14 +107,6 @@ TAGS
 *.elc
 auto-save-list
 tramp
-.\#*
-
-# CLion/IntelliJ
-.idea/
-cmake-build-*/
-.clion.source.upload.marker
-
-
 
 # Operating System Files
 # ----------------------
@@ -101,27 +119,70 @@ Icon?
 .Spotlight-V100
 .Trashes
 .fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
 
 # Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
 Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
 
 # Linux
 .directory
 .Trash-*
+.nfs*
 
-# Documentation Generation
-# ------------------------
+# Logs and Runtime Files
+# ----------------------
+logs/
+*.log
+pids/
+*.pid
+*.seed
+*.pid.lock
+lib-cov/
+
+# Environment Variables
+# --------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Debug and Profiling
+# -------------------
+*.dSYM/
+*.gdb_history
+core
+core.*
+vgcore.*
+callgrind.out.*
+cachegrind.out.*
+massif.out.*
+*.gcov
+*.gcda
+*.gcno
+*.profraw
+perf.data*
+
+# Documentation
+# -------------
+docs/build/
 docs/html/
 docs/latex/
-docs/man/
-docs/rtf/
-docs/xml/
 *.aux
-*.log
 *.out
 *.toc
-*.pdf
 
 # Temporary and Backup Files
 # ---------------------------
@@ -134,29 +195,36 @@ docs/xml/
 *.rej
 *~$*
 
-
-
-# Test Results and Logs
-# ---------------------
-test-results/
-*.log
-*.out
-valgrind-*.log
-sanitizer-*.log
-
-# Benchmarking Results
-# -------------------
+# Benchmarking and Performance
+# ---------------------------
 benchmark-results/
 *.bench
-perf.data*
+.clinic/
 
+# Security and Sensitive Files
+# ----------------------------
+*.key
+*.pem
+*.p12
+*.pfx
+.env.secret
 
-
-
-
-
-
-# Project-Specific Ignores
-# ------------------------
-# project-specific files to ignore here
+# Project-Specific
+# ----------------
+# Keep these files that are important for the project
+!examples/
+!src/
+!addon/
+!lib/index.js
+!lib/index.d.ts
+!test/
+!docs/
+!binding.gyp
+!package.json
+!README.md
+!LICENSE
+!Makefile
 !test_setup.sh
+
+# Backup directory from development
+backup_*/

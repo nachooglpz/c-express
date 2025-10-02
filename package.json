@@ -1,0 +1,78 @@
+{
+  "name": "c-express",
+  "version": "1.0.0",
+  "description": "A fast, lightweight HTTP web framework for Node.js with Express.js-inspired API, powered by native C implementation",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "gypfile": true,
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "build:debug": "node-gyp rebuild --debug",
+    "clean": "node-gyp clean",
+    "configure": "node-gyp configure",
+    "install": "node-gyp rebuild",
+    "prebuild": "prebuildify --napi --strip",
+    "prebuild:all": "prebuildify --napi --strip --target 16.0.0 --target 18.0.0 --target 20.0.0",
+    "test": "npm run build && mocha test/**/*.test.js",
+    "test:js": "mocha test/**/*.test.js",
+    "test:native": "make test",
+    "test:all": "npm run test:native && npm run test:js",
+    "bench": "npm run build && node benchmark/simple.js",
+    "prepublishOnly": "npm run build && npm test",
+    "examples": "npm run examples:hello && npm run examples:middleware && npm run examples:compatibility",
+    "examples:hello": "node examples/hello-world.js",
+    "examples:middleware": "node examples/middleware-demo.js",
+    "examples:compatibility": "node examples/express-compatibility.js",
+    "phase1:demo": "npm run build && npm run examples",
+    "phase1:test": "npm run build && npm test && npm run examples",
+    "docs": "echo 'Phase 1 Documentation: Basic N-API bindings with Express.js compatibility'",
+    "info": "node -e \"const express = require('./lib'); console.log(JSON.stringify(express.info(), null, 2))\""
+  },
+  "keywords": [
+    "web-framework",
+    "express",
+    "fast",
+    "native",
+    "c",
+    "performance",
+    "http",
+    "server",
+    "middleware",
+    "routing"
+  ],
+  "author": "Nacho González López",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nachooglpz/c-express.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nachooglpz/c-express/issues"
+  },
+  "homepage": "https://github.com/nachooglpz/c-express#readme",
+  "files": [
+    "lib/",
+    "binding.gyp",
+    "src/",
+    "prebuilds/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {
+    "node-addon-api": "^7.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0",
+    "prebuildify": "^6.0.0",
+    "mocha": "^10.0.0",
+    "chai": "^4.3.0",
+    "supertest": "^6.3.0",
+    "@types/node": "^20.0.0"
+  },
+  "binary": {
+    "napi_versions": [6, 7, 8]
+  }
+}
