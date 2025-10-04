@@ -17,9 +17,9 @@ try {
     });
     console.log('✓ Route registered successfully');
     
-    console.log('\n🎉 Basic addon functionality is working!');
+    console.log('\nBasic addon functionality is working!');
     
 } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('Error:', error.message);
     console.error('Stack:', error.stack);
 }

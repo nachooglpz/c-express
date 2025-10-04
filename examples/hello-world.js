@@ -1,6 +1,6 @@
 const express = require('../lib');
 
-console.log('🚀 C-Express Hello World Example');
+console.log('C-Express Hello World Example');
 console.log('==================================');
 
 const app = express();
@@ -40,11 +40,11 @@ app.get('/users/:id', (req, res) => {
     });
 });
 
-console.log('\n📋 Application Configuration:');
+console.log('\nApplication Configuration:');
 console.log('Routes registered:', app.getRoutes().length);
 console.log('App info:', app.toString());
 
-console.log('\n📚 Framework Information:');
+console.log('\nFramework Information:');
 const info = express.info();
 console.log('Name:', info.name);
 console.log('Version:', info.version);
@@ -55,10 +55,10 @@ console.log('Native addon:', express.debug.isNativeAddon);
 console.log('Node.js version:', express.debug.buildInfo.nodeVersion);
 console.log('Platform:', express.debug.buildInfo.platform);
 
-console.log('\n⚠️  Note: This is Phase 1 - Route registration only');
+console.log('\n Note: This is Phase 1 - Route registration only');
 console.log('   Phase 2 will add actual HTTP server functionality');
 
-console.log('\n✅ C-Express basic functionality working!');
+console.log('\nC-Express basic functionality working!');
 console.log('  GET  /         - Hello World');
 console.log('  GET  /json     - JSON response');
 console.log('  GET  /users/1  - User by ID');

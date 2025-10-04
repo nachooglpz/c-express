@@ -1,6 +1,6 @@
 const express = require('../lib');
 
-console.log('🔄 C-Express Middleware Chain Example');
+console.log('C-Express Middleware Chain Example');
 console.log('====================================');
 
 const app = express();
@@ -43,7 +43,7 @@ const requestId = (req, res, next) => {
 
 // JSON body parser (mock for Phase 1)
 const jsonParser = (req, res, next) => {
-    console.log('📄 JSON parser middleware (Phase 2 will add actual parsing)');
+    console.log('JSON parser middleware (Phase 2 will add actual parsing)');
     req.body = {};
     next();
 };
@@ -58,7 +58,7 @@ app.use(jsonParser); // Apply globally for Phase 1
 const authenticate = (req, res, next) => {
     const auth = req.headers.authorization || 'Bearer demo-token';
     req.user = { id: 'demo-user', token: auth };
-    console.log('🔐 Authentication middleware applied');
+    console.log('Authentication middleware applied');
     next();
 };
 
@@ -105,7 +105,7 @@ app.post('/api/users', (req, res) => {
 
 // Error handling middleware (last)
 app.use((err, req, res, next) => {
-    console.error('💥 Error:', err.message);
+    console.error('Error:', err.message);
     res.status(500).json({
         error: 'Internal Server Error',
         requestId: req.id,
@@ -113,11 +113,11 @@ app.use((err, req, res, next) => {
     });
 });
 
-console.log('\n📊 Middleware Chain Analysis:');
+console.log('\nMiddleware Chain Analysis:');
 console.log('Total routes registered:', app.getRoutes().length);
 console.log('App configuration:', app.toString());
 
-console.log('\n🔗 Middleware Stack (Phase 1 - registration only):');
+console.log('\nMiddleware Stack (Phase 1 - registration only):');
 console.log('1. Logger - Request/response timing');
 console.log('2. CORS - Cross-origin headers');
 console.log('3. Request ID - Unique request tracking');
@@ -125,7 +125,7 @@ console.log('4. JSON Parser - Body parsing (global)');
 console.log('5. Authentication - Protected routes');
 console.log('6. Error Handler - Global error handling');
 
-console.log('\n⚠️  Note: Phase 1 shows middleware registration');
+console.log('\n Note: Phase 1 shows middleware registration');
 console.log('   Phase 2 will implement actual middleware execution');
 
 module.exports = app;

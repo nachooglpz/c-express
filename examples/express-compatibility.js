@@ -1,12 +1,12 @@
 const express = require('../lib');
 
-console.log('🏗️  C-Express Express.js Compatibility Demo');
+console.log('C-Express Express.js Compatibility Demo');
 console.log('==========================================');
 
 const app = express();
 
 // Express.js compatibility features
-console.log('\n📋 Express.js-style API Usage:');
+console.log('\nExpress.js-style API Usage:');
 
 // Router creation (methods not implemented in Phase 1)
 const router = express.Router();
@@ -68,22 +68,22 @@ app.use((err, req, res, next) => {
 });
 
 console.log('\n🔧 Express.js Compatibility Check:');
-console.log('✅ app.route() - Route builder pattern');
-console.log('✅ app.all() - All HTTP methods');
-console.log('⚠️  app.param() - Parameter middleware (stub)');
-console.log('⚠️  app.set()/get() - Application settings (not implemented)');
-console.log('✅ app.use() - Middleware mounting');
-console.log('✅ express.Router() - Router creation');
-console.log('⚠️  express.static() - Static file middleware (stub)');
-console.log('⚠️  router.get/post/etc - Not implemented in Phase 1');
-console.log('⚠️  router.route() - Not implemented in Phase 1');
+console.log('app.route() - Route builder pattern');
+console.log('app.all() - All HTTP methods');
+console.log(' app.param() - Parameter middleware (stub)');
+console.log(' app.set()/get() - Application settings (not implemented)');
+console.log('app.use() - Middleware mounting');
+console.log('express.Router() - Router creation');
+console.log(' express.static() - Static file middleware (stub)');
+console.log(' router.get/post/etc - Not implemented in Phase 1');
+console.log(' router.route() - Not implemented in Phase 1');
 
-console.log('\n📊 Application Analysis:');
+console.log('\nApplication Analysis:');
 console.log('Routes registered:', app.getRoutes().length);
 console.log('Framework version:', app.version);
 console.log('App info:', app.toString());
 
-console.log('\n🎯 Migration Path from Express.js:');
+console.log('\nMigration Path from Express.js:');
 console.log('1. Replace require("express") with require("c-express")');
 console.log('2. All existing Express.js code should work');
 console.log('3. Benefit from native C performance');
@@ -98,10 +98,10 @@ const routes = [
     'ALL /api/ping'
 ];
 
-console.log('\n📝 Registered Routes (Phase 1):');
+console.log('\nRegistered Routes (Phase 1):');
 routes.forEach(route => console.log(`  ${route}`));
 
-console.log('\n⚠️  Note: This demonstrates Express.js API compatibility');
+console.log('\n Note: This demonstrates Express.js API compatibility');
 console.log('   Phase 2 will add actual HTTP server functionality');
 
 module.exports = app;

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🔍 C-Express Framework Memory Leak Audit"
+echo "C-Express Framework Memory Leak Audit"
 echo "=========================================="
 echo
 
