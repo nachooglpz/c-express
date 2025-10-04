@@ -1,6 +1,5 @@
 // Type definitions for c-express
 // Project: https://github.com/nachooglpz/c-express
-// Definitions by: Nacho González López
 
 export = express;
 

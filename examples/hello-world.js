@@ -13,7 +13,7 @@ app.use((req, res, next) => {
 
 // Basic route
 app.get('/', (req, res) => {
-    res.send('Hello, World from C-Express! 🎉');
+    res.send('Hello, World from C-Express!');
 });
 
 // JSON response
@@ -32,10 +32,10 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// Route with parameters (for Phase 2)
+// Route with parameters
 app.get('/users/:id', (req, res) => {
     res.json({
-        message: 'User endpoint (Phase 2 will handle parameters)',
+        message: 'User endpoint (next phase will handle parameters)',
         note: 'Currently registering routes only'
     });
 });
@@ -55,8 +55,8 @@ console.log('Native addon:', express.debug.isNativeAddon);
 console.log('Node.js version:', express.debug.buildInfo.nodeVersion);
 console.log('Platform:', express.debug.buildInfo.platform);
 
-console.log('\n Note: This is Phase 1 - Route registration only');
-console.log('   Phase 2 will add actual HTTP server functionality');
+console.log('\n Note: This is route registration only');
+console.log('   next phase will add actual HTTP server functionality');
 
 console.log('\nC-Express basic functionality working!');
 console.log('  GET  /         - Hello World');

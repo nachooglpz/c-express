@@ -23,9 +23,6 @@
     "examples:hello": "node examples/hello-world.js",
     "examples:middleware": "node examples/middleware-demo.js",
     "examples:compatibility": "node examples/express-compatibility.js",
-    "phase1:demo": "npm run build && npm run examples",
-    "phase1:test": "npm run build && npm test && npm run examples",
-    "docs": "echo 'Phase 1 Documentation: Basic N-API bindings with Express.js compatibility'",
     "info": "node -e \"const express = require('./lib'); console.log(JSON.stringify(express.info(), null, 2))\""
   },
   "keywords": [

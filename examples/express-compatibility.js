@@ -8,11 +8,11 @@ const app = express();
 // Express.js compatibility features
 console.log('\nExpress.js-style API Usage:');
 
-// Router creation (methods not implemented in Phase 1)
+// Router creation (methods not implemented in yet)
 const router = express.Router();
 console.log('Router created:', typeof router);
 
-// Note: Individual router methods not implemented in Phase 1
+// Note: Individual router methods not implemented yet
 // This demonstrates the API structure only
 
 // Route builder pattern
@@ -37,21 +37,21 @@ app.all('/api/ping', (req, res) => {
     });
 });
 
-// Express.js settings (Phase 1 - demo only)
+// Express.js settings (demo only)
 console.log('Express.js settings would be configured here:');
 console.log('- View engine: ejs');
 console.log('- Views directory: ./views');  
 console.log('- Port: 3000');
-console.log('(app.set() not implemented in Phase 1)');
+console.log('(app.set() not implemented yet)');
 
-// Static file serving (Phase 1 - demo only)
+// Static file serving (demo only)
 console.log('Static file middleware would be mounted here:');
 console.log('- Path: /static');
 console.log('- Directory: public');
-console.log('(express.static() returns stub function in Phase 1)');
+console.log('(express.static() returns stub function)');
 
-// Mount router (Phase 1 - demo only)
-console.log('Router would be mounted at /api (Phase 2 implementation)');
+// Mount router (demo only)
+console.log('Router would be mounted at /api');
 
 // Express.js-style error handling
 app.use((req, res, next) => {
@@ -75,8 +75,8 @@ console.log(' app.set()/get() - Application settings (not implemented)');
 console.log('app.use() - Middleware mounting');
 console.log('express.Router() - Router creation');
 console.log(' express.static() - Static file middleware (stub)');
-console.log(' router.get/post/etc - Not implemented in Phase 1');
-console.log(' router.route() - Not implemented in Phase 1');
+console.log(' router.get/post/etc - Not implemented yet');
+console.log(' router.route() - Not implemented yet');
 
 console.log('\nApplication Analysis:');
 console.log('Routes registered:', app.getRoutes().length);
@@ -98,10 +98,10 @@ const routes = [
     'ALL /api/ping'
 ];
 
-console.log('\nRegistered Routes (Phase 1):');
+console.log('\nRegistered Routes:');
 routes.forEach(route => console.log(`  ${route}`));
 
 console.log('\n Note: This demonstrates Express.js API compatibility');
-console.log('   Phase 2 will add actual HTTP server functionality');
+console.log('   next phase will add actual HTTP server functionality');
 
 module.exports = app;
