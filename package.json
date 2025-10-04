@@ -1,5 +1,5 @@
 {
-  "name": "c-express",
+  "name": "@nachooglpz/c-express",
   "version": "1.0.0",
   "description": "A fast, lightweight HTTP web framework for Node.js with Express.js-inspired API, powered by native C implementation",
   "main": "lib/index.js",
@@ -13,8 +13,8 @@
     "install": "node-gyp rebuild",
     "prebuild": "prebuildify --napi --strip",
     "prebuild:all": "prebuildify --napi --strip --target 16.0.0 --target 18.0.0 --target 20.0.0",
-    "test": "npm run build && mocha test/**/*.test.js",
-    "test:js": "mocha test/**/*.test.js",
+    "test": "npm run build && mocha tests/js/*.test.js",
+    "test:js": "mocha tests/js/*.test.js",
     "test:native": "make test",
     "test:all": "npm run test:native && npm run test:js",
     "bench": "npm run build && node benchmark/simple.js",
@@ -41,7 +41,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nachooglpz/c-express.git"
+    "url": "git+https://github.com/nachooglpz/c-express.git"
   },
   "bugs": {
     "url": "https://github.com/nachooglpz/c-express/issues"
@@ -70,6 +70,10 @@
     "@types/node": "^20.0.0"
   },
   "binary": {
-    "napi_versions": [6, 7, 8]
+    "napi_versions": [
+      6,
+      7,
+      8
+    ]
   }
 }

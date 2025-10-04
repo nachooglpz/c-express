@@ -1,5 +1,5 @@
 const { expect } = require('chai');
-const express = require('../lib');
+const express = require('../../lib');
 
 describe('C-Express Basic Functionality', () => {
     describe('App Creation', () => {

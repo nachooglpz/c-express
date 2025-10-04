@@ -1,7 +1,7 @@
 const { describe, it } = require('mocha');
 const { expect } = require('chai');
 const http = require('http');
-const express = require('../lib');
+const express = require('../../lib');
 
 describe('HTTP Server Integration', function() {
     this.timeout(10000); // Longer timeout for server tests
